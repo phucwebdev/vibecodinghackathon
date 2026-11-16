@@ -112,9 +112,7 @@ input[type="date"].input { min-height: 48px; }
 /* Điện thoại: kết quả lên trước, giả định ở sau */
 @media (max-width: 1023px) { #biz-results { order: -1; } }
 .scenario-grid { display: grid; gap: var(--s-3); grid-template-columns: minmax(0, 1fr); }
-@media (min-width: 1200px) { /* Điện thoại: kết quả lên trước, giả định ở sau */
-@media (max-width: 1023px) { #biz-results { order: -1; } }
-.scenario-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .scenario-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .scenario { border-top-width: 4px; }
 .scenario-warning { border-top-color: #D97706; }
 .scenario-info { border-top-color: var(--primary); }

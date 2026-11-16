@@ -1,0 +1,66 @@
+/* =========================================================
+   CHUYỂN ĐỘNG – dùng chung cho cả mobile và desktop
+   Mọi chuyển cảnh (đổi trang, đổi tab, đổi Đăng nhập ↔ Đăng ký) dùng
+   nhịp TUYẾN TÍNH (linear) để chuyển đều, mượt, không giật.
+   Kiểu trượt cụ thể của từng thiết bị khai báo trong mobile.css / desktop.css.
+   ========================================================= */
+:root {
+  --ease-swap: linear;
+  --dur-swap: 240ms;      /* đổi trang */
+  --dur-ui: 200ms;        /* nút, tab, thanh chỉ báo */
+  --swap-x: 0px;          /* khoảng trượt ngang khi đổi trang (mobile ghi đè) */
+  --swap-y: 6px;          /* khoảng trượt dọc khi đổi trang (desktop ghi đè) */
+}
+
+/* ---------- Đổi trang ---------- */
+.page { animation: swapIn var(--dur-swap) var(--ease-swap) both; }
+.page.is-static { animation: none; }
+#view[data-dir="forward"] .page { animation-name: swapFromRight; }
+#view[data-dir="back"] .page { animation-name: swapFromLeft; }
+
+@keyframes swapIn {
+  from { opacity: 0; transform: translate3d(0, var(--swap-y), 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes swapFromRight {
+  from { opacity: 0; transform: translate3d(var(--swap-x), 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes swapFromLeft {
+  from { opacity: 0; transform: translate3d(calc(-1 * var(--swap-x)), 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- Thanh chỉ báo trượt dưới menu đang chọn ---------- */
+.nav-indicator {
+  position: absolute; pointer-events: none;
+  transition: transform var(--dur-ui) var(--ease-swap), opacity var(--dur-ui) var(--ease-swap);
+}
+.nav-indicator.is-hidden { opacity: 0; }
+.nav-indicator.no-anim { transition: none; }
+
+/* ---------- Đổi chế độ trong form đăng nhập ---------- */
+.auth-swap { animation: authSwap var(--dur-ui) var(--ease-swap) both; }
+@keyframes authSwap { from { opacity: 0; transform: translate3d(0, 4px, 0); } to { opacity: 1; transform: none; } }
+
+/* Nút chọn đoạn có "ngón trượt" */
+.segmented.has-thumb { position: relative; gap: 0; padding: 4px; background: #F1F5F9; border-radius: var(--r); }
+.segmented.has-thumb::before {
+  content: ''; position: absolute; top: 4px; bottom: 4px; left: 4px;
+  width: calc(50% - 4px); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-sm);
+  transform: translateX(calc(var(--seg-i, 0) * 100%));
+  transition: transform var(--dur-ui) var(--ease-swap);
+}
+.segmented.has-thumb .segment {
+  position: relative; z-index: 1; border: 0; background: transparent; color: var(--muted);
+  transition: color var(--dur-ui) var(--ease-swap);
+}
+.segmented.has-thumb .segment[aria-pressed="true"] { background: transparent; color: var(--text); }
+
+/* ---------- Phản hồi khi bấm ---------- */
+.btn, .chip, .segment, .tab, .side-link, .item, .card, .stat, .input, .select, .textarea {
+  transition-timing-function: var(--ease-swap);
+}
+.btn { transition: background-color var(--dur-ui) linear, border-color var(--dur-ui) linear, color var(--dur-ui) linear, transform 120ms linear, box-shadow var(--dur-ui) linear; }
+.btn:active:not([disabled]) { transform: scale(.98); }
+.tab-pill { transition: background-color var(--dur-ui) linear, transform var(--dur-ui) linear; }

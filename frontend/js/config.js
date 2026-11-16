@@ -116,7 +116,14 @@ window.CONFIG = {
     email: true,                  // đăng nhập bằng email + mật khẩu (có đăng ký, quên mật khẩu)
     google: true,                 // nút "Tiếp tục với Google"
     allowGuest: true,             // nút "Dùng thử không cần tài khoản" – dự phòng khi mạng/Firebase lỗi, giám khảo vào nhanh
-    welcome: 'Đăng nhập để quản lý cửa hàng của bạn.'
+    welcome: 'Đăng nhập để quản lý cửa hàng của bạn.',
+    /* Cột giới thiệu bên trái màn hình đăng nhập (chỉ hiện trên máy tính) – SỬA theo đề */
+    headline: 'Quản lý cửa hàng gọn trong một màn hình',
+    features: [
+      { icon: 'list', text: 'Theo dõi sản phẩm và tồn kho' },
+      { icon: 'trending', text: 'Xem doanh thu, lợi nhuận theo kịch bản' },
+      { icon: 'camera', text: 'Quét mã QR để tra cứu nhanh' }
+    ]
   },
 
   /* ---------- 8. Đồng bộ Firebase (tùy chọn) ---------- */

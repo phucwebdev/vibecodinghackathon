@@ -1,0 +1,114 @@
+/* =========================================================
+   DESKTOP (≥ 1024px) – nạp bằng <link media="(min-width: 1024px)">
+   Ưu tiên: sidebar trái, nội dung rộng, chuột/bàn phím, hover rõ.
+   ========================================================= */
+:root {
+  --swap-x: 0px;
+  --swap-y: 8px;            /* đổi trang: hiện dần + nhích nhẹ từ dưới lên */
+  --sidebar-w: 264px;
+  --topbar-h: 64px;
+  --content-max: 1200px;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar { padding: var(--s-5) var(--s-4) var(--s-4); gap: var(--s-6); }
+.sidebar-brand { padding: 0 var(--s-2); }
+.sidebar-nav { position: relative; gap: 4px; }
+.side-link { position: relative; z-index: 1; height: 44px; min-height: 44px; transition: color var(--dur-ui) linear, background-color var(--dur-ui) linear; }
+.side-link[aria-current="page"] { background: transparent; }
+/* chỉ báo: nền xanh nhạt trượt dọc tới mục đang chọn (44px cao + 4px khoảng cách) */
+.sidebar-nav .nav-indicator {
+  left: 0; right: 0; top: 0; height: 44px; border-radius: 10px;
+  background: var(--primary-50);
+  transform: translateY(calc(var(--i, 0) * 48px));
+}
+.sidebar-nav .nav-indicator::before {
+  content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px;
+  border-radius: 0 3px 3px 0; background: var(--primary);
+}
+
+/* ---------- Topbar + nội dung ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(255, 255, 255, .86);
+  backdrop-filter: saturate(1.6) blur(10px); -webkit-backdrop-filter: saturate(1.6) blur(10px);
+}
+.topbar-title h1 { font-size: 1.25rem; }
+.content { padding: var(--s-6) var(--s-6) var(--s-7); }
+.page { gap: var(--s-6); }
+.page-head { align-items: flex-end; }
+.page-head .h2 { font-size: var(--fs-30); }
+
+/* ---------- Hover cho chuột ---------- */
+.card, .stat, .item, .table-wrap { transition: box-shadow var(--dur-ui) linear, border-color var(--dur-ui) linear, transform var(--dur-ui) linear; }
+.item-link:hover, .stat:hover { box-shadow: var(--shadow-sm), 0 6px 16px rgba(15, 23, 42, .06); transform: translateY(-1px); }
+.table tbody tr { transition: background-color 120ms linear; }
+.btn-primary:hover { box-shadow: 0 6px 16px rgba(37, 99, 235, .25); }
+
+/* ---------- Hộp thoại giữa màn ---------- */
+.modal { border-radius: 20px; }
+
+/* =========================================================
+   ĐĂNG NHẬP (desktop) – chia đôi màn hình:
+   trái = giới thiệu sản phẩm (màu thương hiệu), phải = form
+   ========================================================= */
+body.auth-page .app { display: block; }
+body.auth-page #toast-root { right: var(--s-6); bottom: var(--s-6); }
+.auth-wrap {
+  min-height: 100vh; min-height: 100dvh;
+  display: grid; grid-template-columns: minmax(420px, 1.05fr) minmax(480px, 1fr);
+  align-items: stretch; justify-content: stretch; gap: 0; padding: 0;
+  background: var(--surface);
+}
+.auth-hero {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-6);
+  padding: var(--s-7) clamp(40px, 5vw, 80px);
+  color: #fff;
+  background:
+    radial-gradient(600px 400px at 110% 110%, rgba(255, 255, 255, .14), transparent 60%),
+    radial-gradient(500px 360px at -10% -10%, rgba(255, 255, 255, .12), transparent 60%),
+    linear-gradient(150deg, var(--primary) 0%, var(--primary-700) 100%);
+}
+.auth-hero::after {               /* lưới chấm trang trí rất nhạt */
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .12;
+  background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 22px 22px;
+  mask-image: linear-gradient(180deg, transparent, #000 40%, transparent);
+}
+.auth-hero > * { position: relative; z-index: 1; }
+.auth-hero-brand { display: flex; align-items: center; gap: var(--s-3); font-size: 1.125rem; font-weight: 700; }
+.auth-hero-brand .brand-mark { width: 40px; height: 40px; border-radius: 12px; background: rgba(255, 255, 255, .18); }
+.auth-hero h2 { font-size: clamp(2rem, 3vw, 2.625rem); font-weight: 700; line-height: 1.2; max-width: 520px; letter-spacing: -.01em; }
+.auth-hero .lead { margin-top: var(--s-3); font-size: 1.0625rem; line-height: 1.6; color: rgba(255, 255, 255, .86); max-width: 480px; }
+.auth-feats { list-style: none; margin: var(--s-6) 0 0; padding: 0; display: grid; gap: var(--s-3); max-width: 440px; }
+.auth-feats li {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-3) var(--s-4); border-radius: var(--r);
+  background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .16);
+  font-weight: 500;
+}
+.auth-feats .icon { width: 20px; height: 20px; opacity: .95; }
+.auth-hero-foot { font-size: var(--fs-14); color: rgba(255, 255, 255, .72); }
+
+.auth-main {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-4);
+  padding: var(--s-7) var(--s-6);
+  background: radial-gradient(700px 400px at 50% 0%, var(--primary-50), transparent 70%), var(--bg);
+}
+.auth-card { width: 100%; max-width: 440px; padding: 32px 36px; border-radius: 20px; box-shadow: var(--shadow); gap: var(--s-5); }
+.auth-brand { align-items: flex-start; text-align: left; }
+.auth-brand .brand-mark { display: none; }          /* logo đã có ở cột trái */
+.auth-brand .h3 { font-size: 1.625rem; }
+.auth-foot { text-align: center; }
+
+@media (min-width: 1024px) and (max-height: 700px) {
+  .auth-hero, .auth-main { padding-top: var(--s-6); padding-bottom: var(--s-6); }
+  .auth-feats { margin-top: var(--s-5); }
+}
+
+/* Kịch bản kinh doanh: cột hẹp (laptop 1024–1439px) → nhãn trên, số dưới cho dễ đọc */
+@media (max-width: 1439px) {
+  .scenario .dl-row { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .scenario .dl dd { text-align: left; }
+  .scenario .section-head { flex-wrap: wrap; }
+}

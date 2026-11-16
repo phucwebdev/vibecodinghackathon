@@ -156,13 +156,46 @@
       return config.routes[key] ? key : config.defaultRoute;
     }
 
+    /* Thứ tự mục menu → biết đang đi "tới" (trượt từ phải) hay "lùi" (trượt từ trái) */
+    function navIndex(key) {
+      var links = document.querySelectorAll('.tabbar [data-route]');
+      for (var i = 0; i < links.length; i++) if (links[i].getAttribute('data-route') === key) return i;
+      return -1;
+    }
+
+    /* Thanh chỉ báo trượt tuyến tính tới mục menu đang chọn (sidebar + tab đáy) */
+    function moveIndicators(instant) {
+      document.querySelectorAll('.sidebar-nav, .tabbar').forEach(function (nav) {
+        var links = nav.querySelectorAll('[data-route]');
+        if (!links.length) return;
+        var ind = nav.querySelector('.nav-indicator');
+        if (!ind) {
+          ind = document.createElement('span');
+          ind.className = 'nav-indicator no-anim';
+          ind.setAttribute('aria-hidden', 'true');
+          nav.appendChild(ind);
+          instant = true;
+        }
+        var idx = -1;
+        links.forEach(function (a, i) { if (idx < 0 && a.getAttribute('aria-current') === 'page') idx = i; });
+        ind.classList.toggle('no-anim', !!instant);
+        ind.classList.toggle('is-hidden', idx < 0);
+        ind.style.setProperty('--n', links.length);
+        if (idx >= 0) ind.style.setProperty('--i', idx);
+        if (instant) requestAnimationFrame(function () { requestAnimationFrame(function () { ind.classList.remove('no-anim'); }); });
+      });
+    }
+
     function render(keepScroll) {
       var key = routeKey();
       var route = config.routes[key];
       var changed = key !== current;
+      var from = navIndex(current), to = navIndex(key);
+      view.setAttribute('data-dir', from >= 0 && to >= 0 && from !== to ? (to > from ? 'forward' : 'back') : 'fade');
+      var first = current === null;
       current = key;
       try {
-        view.innerHTML = '<div class="page">' + route.render() + '</div>';
+        view.innerHTML = '<div class="page' + (changed ? '' : ' is-static') + '">' + route.render() + '</div>';
         if (route.mount) route.mount(view);
       } catch (err) {
         console.error(err);
@@ -180,7 +213,11 @@
         window.scrollTo(0, 0);
         view.focus({ preventScroll: true });
       }
+      /* chờ các listener khác (VD: sáng mục menu cha) chạy xong rồi mới trượt chỉ báo */
+      setTimeout(function () { moveIndicators(first); }, 0);
     }
+
+    window.addEventListener('resize', function () { moveIndicators(true); });
 
     window.addEventListener('hashchange', function () { render(false); });
     render(false);

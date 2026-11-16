@@ -43,7 +43,7 @@
 
   function cardHtml() {
     var tabs = mode === 'reset' || !A.email ? '' :
-      '<div class="segmented" role="group" aria-label="Chọn cách vào">' +
+      '<div class="segmented has-thumb" role="group" aria-label="Chọn cách vào" style="--seg-i:' + (mode === 'register' ? 1 : 0) + '">' +
         '<button type="button" class="segment" data-action="mode" data-value="login" aria-pressed="' + (mode === 'login') + '">Đăng nhập</button>' +
         '<button type="button" class="segment" data-action="mode" data-value="register" aria-pressed="' + (mode === 'register') + '">Đăng ký</button></div>';
     var offline = App.auth.unavailable
@@ -56,9 +56,29 @@
     return offline + tabs + (A.email ? formHtml() : '') + divider + google + guest;
   }
 
-  function refresh() {
+  /* Đổi chế độ: nội dung mới hiện dần (tuyến tính), "ngón trượt" của nút chọn đoạn trượt từ vị trí cũ sang */
+  function refresh(prevMode) {
     var el = document.getElementById('auth-card-body');
-    if (el) el.innerHTML = cardHtml();
+    if (!el) return;
+    el.innerHTML = cardHtml();
+    el.classList.remove('auth-swap'); void el.offsetWidth; el.classList.add('auth-swap');
+    var seg = el.querySelector('.segmented.has-thumb');
+    if (seg && prevMode && prevMode !== mode && prevMode !== 'reset') {
+      var to = mode === 'register' ? 1 : 0;
+      seg.style.setProperty('--seg-i', prevMode === 'register' ? 1 : 0);
+      requestAnimationFrame(function () { requestAnimationFrame(function () { seg.style.setProperty('--seg-i', to); }); });
+    }
+  }
+
+  /* Cột giới thiệu – chỉ hiện trên máy tính (desktop.css) */
+  function heroHtml() {
+    var feats = A.features || C.menu.slice(0, 3).map(function (m) { return { icon: m.icon, text: m.label }; });
+    return '<aside class="auth-hero" aria-hidden="true">' +
+      '<div class="auth-hero-brand"><span class="brand-mark">' + icon(C.brandIcon, 20) + '</span>' + esc(C.appName) + '</div>' +
+      '<div><h2>' + esc(A.headline || C.appName) + '</h2><p class="lead">' + esc(C.tagline) + '</p>' +
+        '<ul class="auth-feats">' + feats.map(function (f) { return '<li>' + icon(f.icon) + esc(f.text) + '</li>'; }).join('') + '</ul></div>' +
+      '<p class="auth-hero-foot">Số liệu hiển thị là dữ liệu mẫu.</p>' +
+    '</aside>';
   }
 
   function setBusy(on, label) {
@@ -105,7 +125,7 @@
       setBusy(false);
       if (mode === 'reset') {
         UI.toast('Đã gửi liên kết đặt lại mật khẩu tới ' + email + '. Hãy kiểm tra hộp thư (cả mục Spam).', 'info');
-        mode = 'login'; refresh();
+        var prev = mode; mode = 'login'; refresh(prev);
       } else {
         UI.toast(mode === 'register' ? 'Đã tạo tài khoản. Chào mừng bạn!' : 'Đăng nhập thành công');
       }
@@ -121,11 +141,14 @@
   App.pages.login = {
     title: 'Đăng nhập',
     render: function () {
-      return '<div class="auth-wrap"><div class="auth-card card">' +
-        '<div class="auth-brand"><span class="brand-mark">' + icon(C.brandIcon, 22) + '</span>' +
-          '<h2 class="h3">' + esc(C.appName) + '</h2><p class="small muted">' + esc(A.welcome || C.tagline) + '</p></div>' +
-        '<div class="stack" id="auth-card-body">' + cardHtml() + '</div>' +
-        '</div><p class="small muted auth-foot">Thông tin đăng nhập được bảo vệ bởi Firebase Authentication.</p></div>';
+      return '<div class="auth-wrap">' + heroHtml() +
+        '<div class="auth-main"><div class="auth-card card">' +
+          '<div class="auth-brand"><span class="brand-mark">' + icon(C.brandIcon, 22) + '</span>' +
+            '<h2 class="h3">' + esc(mode === 'register' ? 'Tạo tài khoản' : mode === 'reset' ? 'Quên mật khẩu' : 'Chào mừng trở lại') + '</h2>' +
+            '<p class="small muted">' + esc(A.welcome || C.tagline) + '</p></div>' +
+          '<div class="stack" id="auth-card-body">' + cardHtml() + '</div>' +
+        '</div><p class="small muted auth-foot">Thông tin đăng nhập được bảo vệ bởi Firebase Authentication.</p></div>' +
+      '</div>';
     },
     mount: function () {
       var el = document.getElementById(A.email ? 'email' : '');
@@ -138,7 +161,10 @@
         if (action === 'mode') {
           var em = document.getElementById('email'), nm = document.getElementById('name');
           if (em) draft.email = em.value; if (nm) draft.name = nm.value;
-          mode = btn.getAttribute('data-value'); refresh();
+          var prev = mode;
+          mode = btn.getAttribute('data-value'); refresh(prev);
+          var title = document.querySelector('.auth-brand .h3');
+          if (title) title.textContent = mode === 'register' ? 'Tạo tài khoản' : mode === 'reset' ? 'Quên mật khẩu' : 'Chào mừng trở lại';
           var first = document.getElementById(mode === 'register' ? 'name' : 'email');
           if (first) first.focus();
         }
