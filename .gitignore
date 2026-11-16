@@ -1,0 +1,10 @@
+# Bí mật – không bao giờ đưa lên GitHub
+.env
+.env.*
+!.env.example
+
+node_modules/
+.vercel/
+.DS_Store
+Thumbs.db
+*.log
