@@ -46,3 +46,7 @@
 .member-mini { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; border-radius:14px; background:var(--primary-50); border:1px solid var(--primary-100); }
 .input-row { display:flex; gap:8px; } .input-row .input { flex:1; min-width:0; }
 @media (prefers-reduced-motion: reduce) { .confetti { display:none; } .result-points, .tierup { animation:none; } }
+[hidden] { display: none !important; }
+.role-switch { width: 204px; flex: none; }
+.role-switch .segment { white-space: nowrap; font-size: 13px; padding: 0 4px; }
+@media (max-width: 380px) { .role-switch { width: 184px; } }
