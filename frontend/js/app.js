@@ -15,7 +15,25 @@
       { key: 'vang', name: 'Vàng', min: 5000, color: '#B7791F' }
     ]
   };
-  var REWARDS = window.SEED.rewards;
+  /* 3 ưu đãi của Ban tổ chức + 2 ưu đãi đội thêm (ghi rõ ở Thể lệ). Mỗi ưu đãi có hình minh họa do đội tự vẽ. */
+  var REWARDS = window.SEED.rewards.concat([
+    { id: 'TV-QUA-01', name: 'Cà phê miễn phí', desc: 'Một ly cỡ vừa tùy chọn', cost: 300 },
+    { id: 'TV-QUA-02', name: 'Bánh ngọt tặng kèm', desc: 'Một phần bánh trong ngày', cost: 800 }
+  ]).sort(function (a, b) { return a.cost - b.cost; });
+  var ART = {
+    'TV-QUA-01': { c1: '#0F766E', c2: '#134E4A', svg: '<path d="M38 44h44l-5 52a6 6 0 0 1-6 5H49a6 6 0 0 1-6-5z" fill="#fff"/><path d="M40 58h40l-2 20H42z" fill="#F59E0B"/><rect x="34" y="36" width="52" height="9" rx="4.5" fill="#fff"/><path d="M52 28c-4-5 4-8 0-13M66 28c-4-5 4-8 0-13" stroke="#fff" stroke-width="3" stroke-linecap="round" fill="none" opacity=".8"/>' },
+    'KT-VCH-01': { c1: '#2563EB', c2: '#1E3A8A', svg: '<rect x="20" y="38" width="80" height="44" rx="8" fill="#fff"/><circle cx="20" cy="60" r="7" fill="#1E3A8A"/><circle cx="100" cy="60" r="7" fill="#1E3A8A"/><text x="60" y="68" text-anchor="middle" font-size="22" font-weight="700" fill="#1E3A8A" font-family="inherit">20K</text>' },
+    'TV-QUA-02': { c1: '#DB2777', c2: '#831843', svg: '<path d="M26 84 60 40l34 44z" fill="#fff"/><path d="M26 84h68v10a4 4 0 0 1-4 4H30a4 4 0 0 1-4-4z" fill="#FBCFE8"/><path d="M38 70h44" stroke="#F472B6" stroke-width="5" stroke-linecap="round"/><circle cx="60" cy="32" r="8" fill="#FDE68A"/>' },
+    'KT-VCH-02': { c1: '#7C3AED', c2: '#4C1D95', svg: '<rect x="20" y="38" width="80" height="44" rx="8" fill="#fff"/><circle cx="20" cy="60" r="7" fill="#4C1D95"/><circle cx="100" cy="60" r="7" fill="#4C1D95"/><text x="60" y="68" text-anchor="middle" font-size="22" font-weight="700" fill="#4C1D95" font-family="inherit">50K</text>' },
+    'KT-VCH-03': { c1: '#D97706', c2: '#92400E', svg: '<rect x="30" y="52" width="60" height="44" rx="5" fill="#fff"/><rect x="24" y="40" width="72" height="16" rx="5" fill="#FEF3C7"/><rect x="54" y="40" width="12" height="56" fill="#F59E0B"/><path d="M60 40c-6-16-24-12-16-2 4 4 16 2 16 2zm0 0c6-16 24-12 16-2-4 4-16 2-16 2z" fill="#fff"/>' }
+  };
+  function artHtml(id) {
+    var a = ART[id] || ART['KT-VCH-03'];
+    return '<div class="art" style="--c1:' + a.c1 + ';--c2:' + a.c2 + '" aria-hidden="true"><svg viewBox="0 0 120 120">' + a.svg + '</svg></div>';
+  }
+  function titleCase(s) {
+    return String(s).toLocaleLowerCase('vi').replace(/(^|[\s\-])(\S)/g, function (m, a, b) { return a + b.toLocaleUpperCase('vi'); });
+  }
   function tierOf(points) {
     var t = RULES.tiers[0];
     RULES.tiers.forEach(function (x) { if (points >= x.min) t = x; });
@@ -67,7 +85,7 @@
 
   /* ---------- Nghiệp vụ ---------- */
   function register(name, phone) {
-    name = String(name || '').trim().replace(/\s+/g, ' ');
+    name = titleCase(String(name || '').trim().replace(/\s+/g, ' '));
     phone = String(phone || '').replace(/[\s.\-]/g, '');
     if (name.length < 2) return { error: 'Vui lòng nhập họ tên (ít nhất 2 ký tự).', field: 'name' };
     if (!/^0\d{9}$/.test(phone)) return { error: 'Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.', field: 'phone' };
@@ -142,7 +160,8 @@
   function cardHtml(m) {
     var t = tierOf(m.points);
     return '<div class="mcard tier-' + t.key + '" aria-label="Thẻ thành viên hạng ' + t.name + '">' +
-      '<div class="mcard-top"><span>Thẻ thành viên</span><span class="tier-badge">' + icon('star', 16) + 'Hạng ' + t.name + '</span></div>' +
+      '<div class="mcard-pattern" aria-hidden="true"></div><div class="mcard-shine" aria-hidden="true"></div>' +
+      '<div class="mcard-top"><span class="mcard-brand">' + icon('card', 18) + 'Thẻ thành viên</span><span class="tier-badge">' + icon('star', 16) + 'Hạng ' + t.name + '</span></div>' +
       '<div><div class="mcard-name">' + esc(m.name) + '</div><div class="mcard-label">Điểm hiện có</div><div class="mcard-points" data-points="' + m.points + '">' + num(m.points) + '</div></div>' +
       '<div class="mcard-body"><div><div class="mcard-label">Mã thành viên</div><div class="mcard-code">' + esc(m.id) + '</div></div>' +
       '<div class="mcard-qr" role="img" aria-label="Mã QR của thẻ ' + esc(m.id) + '">' + qrSvg(m.id) + '</div></div>' +
@@ -186,7 +205,7 @@
   function pageCard() {
     var m = currentMember();
     if (m) {
-      return '<div class="narrow stack">' + cardHtml(m) + progressHtml(m) +
+      return '<div class="narrow stack"><div><p class="eyebrow muted">Xin chào</p><h2 class="h2">' + esc(m.name) + '</h2></div>' + cardHtml(m) + progressHtml(m) +
         '<div class="grid-2"><a class="btn btn-primary" href="#/uu-dai">' + icon('gift') + 'Đổi ưu đãi</a>' +
         '<a class="btn btn-secondary" href="#/lich-su">' + icon('clock') + 'Lịch sử điểm</a></div>' +
         '<p class="small muted" style="text-align:center">Đưa mã QR hoặc đọc mã thành viên cho nhân viên tại quầy để tích điểm.</p>' +
@@ -203,7 +222,7 @@
         '<div class="field"><label for="o-code">Đã có thẻ? Nhập mã thành viên hoặc số điện thoại</label>' +
         '<div class="input-row"><input class="input" id="o-code" name="code" placeholder="VD: KT-004" autocapitalize="characters"><button class="btn btn-secondary" type="submit">Mở thẻ</button></div></div>' +
       '</form>' +
-      (db.members.length ? '' : '<button type="button" class="btn btn-text" data-action="sample">' + icon('download') + 'Nạp dữ liệu mẫu</button>') +
+      '<button type="button" class="btn btn-text" data-action="sample">' + icon('download') + 'Nạp dữ liệu mẫu của Ban tổ chức</button>' +
     '</div>';
   }
 
@@ -215,15 +234,16 @@
     return '<div class="narrow stack">' +
       '<div class="member-mini"><div><div class="small muted">Điểm hiện có</div><div class="h3">' + num(m.points) + ' điểm</div></div><span class="badge badge-neutral">Hạng ' + tierOf(m.points).name + '</span></div>' +
       '<div class="section-head"><h2 class="h4">Đổi điểm lấy ưu đãi</h2></div>' +
-      '<div class="list">' + REWARDS.map(function (r) {
+      '<div class="rw-grid">' + REWARDS.map(function (r) {
         var ok = m.points >= r.cost;
-        return '<div class="item reward"><div class="item-main"><div class="item-title">' + esc(r.name) + '</div><div class="item-sub">' + esc(r.desc) + ' · ' + num(r.cost) + ' điểm' +
-          (ok ? '' : ' · thiếu ' + num(r.cost - m.points)) + '</div></div>' +
-          '<button type="button" class="btn btn-sm ' + (ok ? 'btn-primary' : 'btn-secondary') + '" data-action="redeem" data-id="' + r.id + '">Đổi</button></div>';
+        return '<div class="rw' + (ok ? '' : ' is-locked') + '">' + artHtml(r.id) +
+          '<div class="rw-body"><div class="item-title">' + esc(r.name) + '</div><div class="small muted">' + esc(r.desc) + '</div>' +
+          '<div class="rw-foot"><span class="rw-cost">' + icon('star', 14) + num(r.cost) + ' điểm</span>' +
+          '<button type="button" class="btn btn-sm ' + (ok ? 'btn-primary' : 'btn-secondary') + '" data-action="redeem" data-id="' + r.id + '">' + (ok ? 'Đổi' : 'Thiếu ' + num(r.cost - m.points)) + '</button></div></div></div>';
       }).join('') + '</div>' +
       '<div class="section-head"><h2 class="h4">Ví ưu đãi của tôi</h2><span class="badge badge-neutral">' + mine.length + '</span></div>' +
       (mine.length ? '<div class="stack" style="gap:8px">' + mine.map(function (w) {
-        return '<div class="voucher' + (w.used ? ' is-used' : '') + '"><div class="voucher-main"><div class="item-title">' + esc(w.name) + '</div>' +
+        return '<div class="voucher ticket' + (w.used ? ' is-used' : '') + '">' + artHtml(w.rewardId) + '<div class="voucher-main"><div class="item-title">' + esc(w.name) + '</div>' +
           '<div class="small muted">' + esc(w.desc || '') + ' · Đổi lúc ' + fmtTime(w.time) + '</div>' +
           '<div class="row" style="gap:8px;margin-top:6px"><span class="badge ' + (w.used ? 'badge-neutral' : 'badge-success') + '">' + (w.used ? 'Đã dùng ' + fmtTime(w.used) : 'Chưa dùng') + '</span><code>' + esc(w.id) + '</code></div>' +
           (w.used ? '' : '<details class="voucher-qr"><summary>Hiện mã QR để dùng tại quầy</summary><div class="mcard-qr" role="img" aria-label="Mã QR ưu đãi ' + esc(w.id) + '">' + qrSvg(w.id) + '</div></details>') +
@@ -418,13 +438,16 @@
     return '<div class="narrow stack">' +
       '<div class="card stack"><h2 class="h4">Cách tích điểm</h2><p>Mỗi <strong>' + num(RULES.vndPerPoint) + 'đ</strong> trên hóa đơn = <strong>1 điểm</strong> (làm tròn xuống). Nhân viên cộng điểm tại quầy bằng mã thành viên và mã giao dịch. Mỗi mã giao dịch chỉ được cộng một lần.</p></div>' +
       '<div class="card stack"><h2 class="h4">Hạng thành viên</h2><p class="small muted">Hạng tự đổi theo số điểm hiện có, thẻ đổi màu theo hạng.</p>' +
+        '<div class="tier-gallery">' + T.map(function (t) {
+          return '<div class="mcard mini tier-' + t.key + '"><div class="mcard-pattern" aria-hidden="true"></div><div class="mcard-top"><span class="mcard-brand">' + icon('card', 14) + 'Thẻ</span></div><div class="mcard-name">' + t.name + '</div></div>';
+        }).join('') + '</div>' +
         '<table class="rule-table"><tr><th>Hạng</th><th>Mốc điểm</th></tr>' +
         '<tr><td><span class="dot" style="background:' + T[0].color + '"></span>Đồng</td><td>Dưới ' + num(T[1].min) + ' điểm</td></tr>' +
         '<tr><td><span class="dot" style="background:' + T[1].color + '"></span>Bạc</td><td>Từ ' + num(T[1].min) + ' đến ' + num(T[2].min - 1) + ' điểm</td></tr>' +
         '<tr><td><span class="dot" style="background:' + T[2].color + '"></span>Vàng</td><td>Từ ' + num(T[2].min) + ' điểm trở lên</td></tr></table></div>' +
       '<div class="card stack"><h2 class="h4">Đổi điểm lấy ưu đãi</h2><table class="rule-table"><tr><th>Ưu đãi</th><th>Điểm cần đổi</th></tr>' +
         REWARDS.map(function (r) { return '<tr><td>' + esc(r.name) + '</td><td>' + num(r.cost) + ' điểm</td></tr>'; }).join('') + '</table>' +
-        '<p class="small muted">Điểm bị trừ ngay khi đổi; ưu đãi nằm trong Ví ưu đãi của thành viên.</p></div>' +
+        '<p class="small muted">Điểm bị trừ ngay khi đổi; ưu đãi nằm trong Ví ưu đãi của thành viên. Ba mức voucher và quà tặng lấy từ bộ dữ liệu của Ban tổ chức; hai mức còn lại do đội bổ sung (dữ liệu mô phỏng).</p></div>' +
       '<div class="card stack"><h2 class="h4">Dữ liệu mẫu</h2><p class="small muted">Nạp 8 thành viên, 7 giao dịch và 3 ưu đãi do Ban tổ chức cung cấp. Điểm của thành viên mẫu trở về đúng số trong bộ dữ liệu; thẻ bạn tự đăng ký được giữ nguyên. Dữ liệu lưu trên máy này và dùng được khi mất mạng.</p>' +
         '<button type="button" class="btn btn-primary" data-action="sample">' + icon('download') + 'Nạp dữ liệu mẫu</button>' +
         '<button type="button" class="btn btn-text" data-action="reset">Xóa toàn bộ dữ liệu trên máy này</button></div>' +

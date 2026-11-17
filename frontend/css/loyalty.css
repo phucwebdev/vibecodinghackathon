@@ -58,3 +58,59 @@
 .tier-flash { animation: tierFlash 900ms linear 2; }
 @keyframes tierFlash { 50% { box-shadow: 0 0 0 6px rgba(255,255,255,.7), 0 0 36px 10px rgba(245,158,11,.55); transform: scale(1.02); } }
 @media (prefers-reduced-motion: reduce) { .tier-flash { animation: none; } }
+
+/* ===== Thẻ thành viên: họa tiết riêng cho từng hạng ===== */
+.mcard { aspect-ratio: auto; border: 1px solid rgba(255,255,255,.18); text-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.mcard-pattern, .mcard-shine { position: absolute !important; inset: 0; z-index: 0 !important; pointer-events: none; }
+.mcard-brand { display: inline-flex; align-items: center; gap: 8px; letter-spacing: .04em; text-transform: uppercase; font-size: 13px; }
+.tier-dong { background: linear-gradient(135deg, #B8733A 0%, #8A4F22 55%, #5E3212 100%); }
+.tier-dong .mcard-pattern { background:
+  repeating-linear-gradient(45deg, rgba(255,255,255,.09) 0 2px, transparent 2px 16px),
+  repeating-linear-gradient(-45deg, rgba(0,0,0,.10) 0 2px, transparent 2px 16px); }
+.tier-bac { background: linear-gradient(135deg, #A3B1C2 0%, #64748B 50%, #334155 100%); }
+.tier-bac .mcard-pattern { background:
+  repeating-radial-gradient(circle at 100% 0, rgba(255,255,255,.13) 0 2px, transparent 2px 18px),
+  repeating-radial-gradient(circle at 0 100%, rgba(255,255,255,.07) 0 2px, transparent 2px 22px); }
+.tier-vang { background: linear-gradient(135deg, #D9A441 0%, #B07A14 50%, #7A5206 100%); }
+.tier-vang .mcard-pattern { background:
+  repeating-conic-gradient(from 0deg at 88% 12%, rgba(255,255,255,.13) 0 5deg, transparent 5deg 12deg),
+  radial-gradient(circle at 88% 12%, rgba(255,255,255,.35), transparent 38%); }
+.mcard-shine { background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.22) 50%, transparent 60%); background-size: 250% 100%; animation: shine 5s linear infinite; }
+@keyframes shine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.mcard::after { display: none; }
+.tier-badge { backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,.35); }
+.mcard-qr { box-shadow: 0 4px 12px rgba(0,0,0,.25); text-shadow: none; }
+.tier-gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mcard.mini { padding: 10px 12px; gap: 14px; border-radius: 12px; box-shadow: 0 4px 10px rgba(15,23,42,.15); }
+.mcard.mini .mcard-brand { font-size: 10px; gap: 4px; } .mcard.mini .mcard-name { font-size: 1rem; }
+
+/* ===== Ưu đãi có hình minh họa ===== */
+.art { background:
+  repeating-linear-gradient(135deg, rgba(255,255,255,.10) 0 2px, transparent 2px 12px),
+  radial-gradient(circle at 20% 15%, rgba(255,255,255,.28), transparent 45%),
+  linear-gradient(145deg, var(--c1), var(--c2));
+  display: grid; place-items: center; }
+.art svg { width: 76%; max-width: 96px; height: auto; filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
+.rw-grid { display: grid; gap: 12px; grid-template-columns: 1fr; }
+@media (min-width: 720px) { .rw-grid { grid-template-columns: 1fr 1fr; } .narrow:has(.rw-grid) { max-width: 760px; } }
+.rw { display: grid; grid-template-columns: 104px minmax(0, 1fr); border-radius: 16px; overflow: hidden; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+.rw-body { padding: 12px 14px; display: grid; gap: 4px; align-content: center; min-width: 0; }
+.rw-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.rw-cost { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--primary-700); white-space: nowrap; }
+.rw.is-locked .art { filter: grayscale(.7); opacity: .8; }
+/* Vé trong ví: có hình, đường xé và khuyết tròn hai đầu */
+.voucher.ticket { position: relative; display: grid; grid-template-columns: 88px minmax(0, 1fr); padding: 0; gap: 0; border: 1px solid var(--border); background: var(--surface); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-sm); align-items: stretch; }
+.voucher.ticket .voucher-main { padding: 12px 14px; border-left: 2px dashed var(--border); }
+.voucher.ticket::before, .voucher.ticket::after { content: ''; position: absolute; left: 80px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg); border: 1px solid var(--border); z-index: 2; }
+.voucher.ticket::before { top: -9px; } .voucher.ticket::after { bottom: -9px; }
+.voucher.ticket.is-used { opacity: 1; background: #F8FAFC; } .voucher.ticket.is-used .art { filter: grayscale(1); opacity: .6; }
+.voucher.ticket code { font-size: 14px; }
+
+/* Thông báo trên điện thoại hiện ở phía trên để không che nút và ô nhập phía dưới */
+@media (max-width: 1023.98px) {
+  #toast-root { top: calc(64px + env(safe-area-inset-top)); bottom: auto; }
+}
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+@media (prefers-reduced-motion: reduce) { .mcard-shine { animation: none; display: none; } }
+/* Chỉ hiện thông báo mới nhất để các thông báo không chồng lên nhau */
+#toast-root .toast:not(:last-child) { display: none; }

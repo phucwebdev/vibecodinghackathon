@@ -26,7 +26,9 @@ Hệ thống thẻ thành viên số hóa: khách tích điểm khi mua hàng, �
 
 - **10.000đ = 1 điểm** (làm tròn xuống).
 - Hạng theo điểm hiện có: **Đồng** dưới 1.000 · **Bạc** 1.000–4.999 · **Vàng** từ 5.000.
-- Ưu đãi: Voucher 20.000đ = 500 điểm · Voucher 50.000đ = 1.100 điểm · Quà tặng đặc biệt = 2.000 điểm.
+- Ưu đãi của Ban tổ chức: Voucher 20.000đ = 500 điểm · Voucher 50.000đ = 1.100 điểm · Quà tặng đặc biệt = 2.000 điểm.
+- Ưu đãi đội bổ sung (dữ liệu mô phỏng): Cà phê miễn phí = 300 điểm · Bánh ngọt tặng kèm = 800 điểm.
+- Hình minh họa ưu đãi và họa tiết thẻ do đội tự vẽ bằng SVG/CSS.
 
 ## Công nghệ
 
