@@ -17,7 +17,9 @@ Hệ thống thẻ thành viên số hóa: khách tích điểm khi mua hàng, �
 | Lịch sử biến động điểm (loại, số điểm, thời gian) | *Lịch sử* |
 | Nút Nạp dữ liệu mẫu | *Thể lệ* (và màn đăng ký khi chưa có dữ liệu) |
 | Thưởng QR: QR trên thẻ + quét bằng camera ở Quầy (hoặc chọn ảnh QR) | *Thẻ*, *Cộng điểm* → **Quét QR** |
-| Mở rộng: hiệu ứng khi cộng điểm / lên hạng; thống kê mini | *Cộng điểm*, *Thành viên* |
+| Mở rộng: hiệu ứng khi cộng điểm / lên hạng; thống kê mini | *Cộng điểm*, *Thẻ*, *Thành viên* |
+| Mở rộng: quầy xác nhận dùng ưu đãi (quét QR voucher, mỗi mã dùng 1 lần) | *Ưu đãi* (ví) → Quầy → *Dùng ưu đãi* |
+| Mở rộng: hai cửa sổ Thành viên + Quầy cập nhật tức thì, rung khi quét | Mở app ở 2 cửa sổ cùng trình duyệt |
 
 ## Quy tắc đội công bố
 

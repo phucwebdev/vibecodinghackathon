@@ -50,3 +50,11 @@
 .role-switch { width: 204px; flex: none; }
 .role-switch .segment { white-space: nowrap; font-size: 13px; padding: 0 4px; }
 @media (max-width: 380px) { .role-switch { width: 184px; } }
+/* Ví ưu đãi: trạng thái + QR */
+.voucher-main { min-width: 0; flex: 1; }
+.voucher.is-used { border-style: solid; border-color: var(--border); background: #F8FAFC; opacity: .8; }
+.voucher-qr { margin-top: 8px; } .voucher-qr summary { cursor: pointer; color: var(--primary-700); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.voucher-qr .mcard-qr { border: 1px solid var(--border); width: 160px; height: 160px; margin: 4px auto 0; }
+.tier-flash { animation: tierFlash 900ms linear 2; }
+@keyframes tierFlash { 50% { box-shadow: 0 0 0 6px rgba(255,255,255,.7), 0 0 36px 10px rgba(245,158,11,.55); transform: scale(1.02); } }
+@media (prefers-reduced-motion: reduce) { .tier-flash { animation: none; } }

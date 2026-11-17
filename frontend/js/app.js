@@ -29,7 +29,16 @@
   /* ---------- Dữ liệu (localStorage) ---------- */
   var KEY = 'the-thanh-vien.v1';
   var db = UI.store.get(KEY, null) || { members: [], txs: [], wallet: [], current: null, role: 'member', seq: 0 };
-  function save() { UI.store.set(KEY, db); }
+  /* Vai và thẻ đang mở là của riêng từng cửa sổ → mở 2 cửa sổ (Thành viên + Quầy) cạnh nhau được */
+  try {
+    var ss = JSON.parse(sessionStorage.getItem(KEY + '.tab') || 'null');
+    if (ss) { db.role = ss.role; db.current = ss.current; }
+  } catch (e) { /* bỏ qua */ }
+  function save() {
+    UI.store.set(KEY, db);
+    try { sessionStorage.setItem(KEY + '.tab', JSON.stringify({ role: db.role, current: db.current })); } catch (e) { /* bỏ qua */ }
+  }
+  function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 80); } catch (e) { /* bỏ qua */ } }
   function normCode(s) { return String(s || '').trim().toUpperCase(); }
   function findMember(code) {
     var c = normCode(code);
@@ -96,6 +105,17 @@
     save();
     return { reward: r, member: m };
   }
+  function findVoucher(code) {
+    var c = normCode(code);
+    return db.wallet.filter(function (w) { return w.id === c; })[0] || null;
+  }
+  function useVoucher(code) {
+    var w = findVoucher(code);
+    if (!w) return { error: 'Không tìm thấy ưu đãi có mã này.' };
+    if (w.used) return { error: 'Ưu đãi này đã dùng lúc ' + fmtTime(w.used) + '. Không dùng lại được.' };
+    w.used = nowIso(); save();
+    return { voucher: w };
+  }
   function loadSample() {
     var S = window.SEED;
     S.members.forEach(function (sm) {
@@ -123,7 +143,7 @@
     var t = tierOf(m.points);
     return '<div class="mcard tier-' + t.key + '" aria-label="Thẻ thành viên hạng ' + t.name + '">' +
       '<div class="mcard-top"><span>Thẻ thành viên</span><span class="tier-badge">' + icon('star', 16) + 'Hạng ' + t.name + '</span></div>' +
-      '<div><div class="mcard-name">' + esc(m.name) + '</div><div class="mcard-label">Điểm hiện có</div><div class="mcard-points">' + num(m.points) + '</div></div>' +
+      '<div><div class="mcard-name">' + esc(m.name) + '</div><div class="mcard-label">Điểm hiện có</div><div class="mcard-points" data-points="' + m.points + '">' + num(m.points) + '</div></div>' +
       '<div class="mcard-body"><div><div class="mcard-label">Mã thành viên</div><div class="mcard-code">' + esc(m.id) + '</div></div>' +
       '<div class="mcard-qr" role="img" aria-label="Mã QR của thẻ ' + esc(m.id) + '">' + qrSvg(m.id) + '</div></div>' +
     '</div>';
@@ -203,7 +223,11 @@
       }).join('') + '</div>' +
       '<div class="section-head"><h2 class="h4">Ví ưu đãi của tôi</h2><span class="badge badge-neutral">' + mine.length + '</span></div>' +
       (mine.length ? '<div class="stack" style="gap:8px">' + mine.map(function (w) {
-        return '<div class="voucher"><div><div class="item-title">' + esc(w.name) + '</div><div class="small muted">' + esc(w.desc || '') + ' · Đổi lúc ' + fmtTime(w.time) + '</div></div><code>' + esc(w.id) + '</code></div>';
+        return '<div class="voucher' + (w.used ? ' is-used' : '') + '"><div class="voucher-main"><div class="item-title">' + esc(w.name) + '</div>' +
+          '<div class="small muted">' + esc(w.desc || '') + ' · Đổi lúc ' + fmtTime(w.time) + '</div>' +
+          '<div class="row" style="gap:8px;margin-top:6px"><span class="badge ' + (w.used ? 'badge-neutral' : 'badge-success') + '">' + (w.used ? 'Đã dùng ' + fmtTime(w.used) : 'Chưa dùng') + '</span><code>' + esc(w.id) + '</code></div>' +
+          (w.used ? '' : '<details class="voucher-qr"><summary>Hiện mã QR để dùng tại quầy</summary><div class="mcard-qr" role="img" aria-label="Mã QR ưu đãi ' + esc(w.id) + '">' + qrSvg(w.id) + '</div></details>') +
+          '</div></div>';
       }).join('') + '</div>' : emptyHtml('gift', 'Ví chưa có ưu đãi', 'Đổi điểm ở danh sách phía trên, ưu đãi sẽ nằm ở đây.')) +
     '</div>';
   }
@@ -262,6 +286,30 @@
         '<button class="btn btn-primary btn-block" type="submit">' + icon('plus-circle') + 'Cộng điểm</button>' +
       '</form></div>';
   }
+  var lastUsed = null;
+  function voucherMini(code) {
+    if (!normCode(code)) return '';
+    var w = findVoucher(code);
+    if (!w) return '<p class="small muted">Chưa tìm thấy ưu đãi có mã này.</p>';
+    var m = findMember(w.memberId);
+    return '<div class="member-mini"><div><div class="item-title">' + esc(w.name) + '</div><div class="small muted">' + (m ? esc(m.name) + ' · ' + esc(m.id) : '') + '</div></div>' +
+      '<span class="badge ' + (w.used ? 'badge-danger' : 'badge-success') + '">' + (w.used ? 'Đã dùng' : 'Dùng được') + '</span></div>';
+  }
+  function pageUse() {
+    return '<div class="narrow stack">' +
+      '<div class="page-head"><div><h2 class="h2">Dùng ưu đãi tại quầy</h2><p class="muted">Quét mã QR trong ví của khách hoặc nhập mã ưu đãi. Mỗi ưu đãi chỉ dùng một lần.</p></div></div>' +
+      (lastUsed ? '<div class="result" role="status"><div class="small muted">Đã xác nhận cho khách</div><div class="result-points" style="font-size:1.5rem">' + esc(lastUsed.name) + '</div><div>Mã ' + esc(lastUsed.id) + ' · dùng lúc ' + fmtTime(lastUsed.used) + '</div></div>' : '') +
+      '<form class="card stack" id="f-use" novalidate>' +
+        '<div class="field"><label for="v-code">Mã ưu đãi</label>' +
+          '<div class="input-row"><input class="input" id="v-code" name="code" placeholder="VD: VC-AB12CD" autocapitalize="characters" autocomplete="off">' +
+          '<button type="button" class="btn btn-secondary" data-action="scan">' + icon('qr') + 'Quét QR</button></div></div>' +
+        '<div id="scan-box" hidden class="stack" style="gap:8px"><div id="qr-reader"></div>' +
+          '<div class="row" style="justify-content:center;gap:8px"><label class="btn btn-secondary btn-sm">' + icon('upload', 16) + 'Chọn ảnh QR<input type="file" accept="image/*" id="qr-file" hidden></label>' +
+          '<button type="button" class="btn btn-text btn-sm" data-action="scan-stop">Đóng máy quét</button></div></div>' +
+        '<div id="voucher-mini"></div>' +
+        '<button class="btn btn-primary btn-block" type="submit">' + icon('check-circle') + 'Xác nhận đã dùng</button>' +
+      '</form></div>';
+  }
   function stopScan() {
     var s = scanner; scanner = null;
     if (s) { try { s.stop().then(function () { s.clear(); }).catch(function () {}); } catch (e) { /* bỏ qua */ } }
@@ -269,7 +317,13 @@
   }
   function onScanned(text) {
     var code = normCode(text);
-    stopScan();
+    stopScan(); buzz(80);
+    var vInput = document.getElementById('v-code');
+    if (vInput) {
+      vInput.value = code; document.getElementById('voucher-mini').innerHTML = voucherMini(code);
+      UI.toast(findVoucher(code) ? 'Đã đọc mã ưu đãi ' + code : 'Mã ' + code + ' không phải mã ưu đãi', findVoucher(code) ? 'success' : 'error');
+      return;
+    }
     var input = document.getElementById('e-member');
     if (input) { input.value = code; document.getElementById('member-mini').innerHTML = memberMini(code); }
     var m = findMember(code);
@@ -358,6 +412,7 @@
     ],
     counter: [
       { key: 'quay', label: 'Cộng điểm', icon: 'plus-circle' },
+      { key: 'dung-uu-dai', label: 'Dùng ưu đãi', icon: 'gift' },
       { key: 'thanh-vien', label: 'Thành viên', icon: 'users' },
       { key: 'the-le', label: 'Thể lệ', icon: 'info' }
     ]
@@ -378,7 +433,7 @@
   }
   function setRole(role) {
     if (db.role === role) return;
-    db.role = role; save(); lastResult = null; stopScan();
+    db.role = role; save(); lastResult = null; lastUsed = null; stopScan();
     renderNav();
     var target = role === 'counter' ? 'quay' : 'the';
     if (router.current() === target) router.refresh(); else router.go(target);
@@ -389,11 +444,34 @@
   renderNav();
 
   function wrap(fn) { return function () { stopScan(); return fn(); }; }
+  /* Thẻ: số điểm chạy từ giá trị đã thấy lần trước tới giá trị mới; lên hạng thì báo + thẻ nháy sáng */
+  var seen = {};
+  function animateCard(view) {
+    var el = view.querySelector('.mcard-points'); var m = currentMember();
+    if (!el || !m) return;
+    var from = seen[m.id], to = m.points;
+    seen[m.id] = to;
+    if (from == null || from === to) return;
+    if (tierOf(from).key !== tierOf(to).key && to > from) {
+      var card = view.querySelector('.mcard'); if (card) card.classList.add('tier-flash');
+      UI.toast('Chúc mừng! Bạn vừa lên hạng ' + tierOf(to).name, 'success'); buzz(200);
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var t0 = null, dur = 700;
+    function step(ts) {
+      if (t0 == null) t0 = ts;
+      var k = Math.min(1, (ts - t0) / dur);
+      el.textContent = num(Math.round(from + (to - from) * k));
+      if (k < 1) requestAnimationFrame(step);
+    }
+    el.textContent = num(from); requestAnimationFrame(step);
+  }
   var router = UI.router({
     appName: 'Thẻ thành viên',
     defaultRoute: db.role === 'counter' ? 'quay' : 'the',
     routes: {
-      'the': { title: 'Thẻ của tôi', render: wrap(pageCard) },
+      'the': { title: 'Thẻ của tôi', render: wrap(pageCard), mount: animateCard },
+      'dung-uu-dai': { title: 'Dùng ưu đãi', render: wrap(pageUse) },
       'uu-dai': { title: 'Ưu đãi', render: wrap(pageRewards) },
       'lich-su': { title: 'Lịch sử điểm', render: wrap(pageHistory) },
       'quay': { title: 'Quầy', render: wrap(pageCounter) },
@@ -430,11 +508,18 @@
       var m = findMember(f.code.value);
       if (!m) return fieldError(f, 'code', 'Không tìm thấy thẻ với mã hoặc số điện thoại này.');
       db.current = m.id; save(); router.refresh();
+    } else if (f.id === 'f-use') {
+      if (!normCode(f.code.value)) return fieldError(f, 'code', 'Vui lòng nhập hoặc quét mã ưu đãi.');
+      r = useVoucher(f.code.value);
+      if (r.error) return fieldError(f, 'code', r.error);
+      lastUsed = r.voucher; buzz(80);
+      UI.toast('Đã xác nhận dùng ' + r.voucher.name, 'success');
+      router.refresh(); window.scrollTo(0, 0);
     } else if (f.id === 'f-earn') {
       var amount = String(f.amount.value).replace(/[^\d]/g, '');
       r = earn(f.member.value, amount, f.tx.value);
       if (r.error) { fieldError(f, r.field, r.error); if (r.duplicate) UI.toast('Mã giao dịch bị trùng – không cộng điểm', 'error'); return; }
-      lastResult = r;
+      lastResult = r; buzz(r.tierUp ? 200 : 80);
       UI.toast('Đã cộng ' + num(r.points) + ' điểm cho ' + r.member.name + (r.tierUp ? ' – lên hạng ' + r.tierUp.name + '!' : ''), 'success');
       prefill = '';
       router.refresh();
@@ -451,6 +536,7 @@
       var pts = Math.floor(Number(raw) / RULES.vndPerPoint);
       document.getElementById('pts-preview').innerHTML = raw ? 'Sẽ cộng <strong>' + num(pts) + ' điểm</strong>' : 'Nhập số tiền để xem số điểm sẽ cộng.';
     }
+    if (t.id === 'v-code') document.getElementById('voucher-mini').innerHTML = voucherMini(t.value);
     if (t.id === 'm-q') { memberQuery = t.value; document.getElementById('members-list').innerHTML = membersListHtml(); }
     if (t.classList.contains('is-invalid')) { t.classList.remove('is-invalid'); var er = (t.closest('.field') || t.parentNode).querySelector('.field-error'); if (er) er.remove(); }
   });
@@ -489,6 +575,22 @@
     } else if (a === 'scan') { startScan(); }
     else if (a === 'scan-stop') { stopScan(); }
     else if (a === 'pick') { prefill = b.getAttribute('data-id'); lastResult = null; router.go('quay'); }
+  });
+
+  /* Cửa sổ khác (VD: Quầy) vừa đổi dữ liệu → cửa sổ này cập nhật ngay, không cần tải lại */
+  window.addEventListener('storage', function (e) {
+    if (e.key !== KEY) return;
+    var fresh = UI.store.get(KEY, null); if (!fresh) return;
+    var me = currentMember(), before = me ? me.points : null;
+    fresh.role = db.role; fresh.current = db.current; db = fresh;
+    var now = currentMember();
+    if (db.role === 'member' && now && before != null && now.points !== before) {
+      var d = now.points - before;
+      UI.toast(d > 0 ? 'Bạn vừa được cộng ' + num(d) + ' điểm' : 'Điểm của bạn vừa thay đổi: −' + num(-d), d > 0 ? 'success' : 'info');
+    }
+    var a = document.activeElement;
+    var typing = a && /^(INPUT|TEXTAREA)$/.test(a.tagName) && view.contains(a);
+    if (!typing && !scanner) router.refresh();
   });
 
   /* Chạy được khi mất mạng: lưu sẵn tệp của app */
