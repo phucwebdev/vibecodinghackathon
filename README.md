@@ -5,6 +5,9 @@ Hệ thống thẻ thành viên số hóa: khách tích điểm khi mua hàng, �
 - **Demo:** https://aifus-vibe-coding-2026.vercel.app (mở trên điện thoại hoặc máy tính, không cần tài khoản)
 - **Mã thử thống nhất:** `KT-004` (Dũng Phạm) – bấm **Nạp dữ liệu mẫu** ở trang *Thể lệ* trước khi thử.
 
+- **Video thao tác:** [minh-chung/demo-the-thanh-vien.mp4](minh-chung/demo-the-thanh-vien.mp4) (quay tự động trên khổ điện thoại, đi qua từng yêu cầu của đề)
+- **Ảnh minh chứng:** thư mục [minh-chung/](minh-chung/) · **Hồ sơ nộp bài:** [HO-SO-NOP-BAI.md](HO-SO-NOP-BAI.md)
+
 ## Tính năng (theo đề)
 
 | Yêu cầu | Ở đâu trong app |
