@@ -6,13 +6,13 @@
   <meta name="theme-color" content="#2563EB">
   <!-- SỬA theo đề: mô tả + tiêu đề (tên app & menu lấy từ js/config.js) -->
   <meta name="description" content="Theo dõi sản phẩm, tồn kho và doanh thu của cửa hàng.">
-  <title>Quản lý cửa hàng</title>
+  <title>Thẻ thành viên</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563EB'/%3E%3Cpath d='M8 13v10h16V13M7 9h18l-1 4H8z' fill='none' stroke='white' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/loyalty.css">
   <!-- Chuyển động dùng chung (tuyến tính) + giao diện riêng cho từng thiết bị -->
   <link rel="stylesheet" href="css/motion.css">
   <link rel="stylesheet" href="css/mobile.css" media="(max-width: 1023.98px)">
@@ -57,6 +57,11 @@
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="m2 2 20 20"/></symbol>
     <symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2.5"/><path d="M2 10h20"/><path d="M6 15h4"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M5 12v9h14v-9"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20v.01M17 20h4v-3"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8"/><path d="M19 21a7 7 0 0 0-3-5.7"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2L12 17.3 6.5 20.2l1-6.2L3 9.6l6.2-.9z"/></symbol>
   </svg>
 
   <a href="#view" class="sr-only">Bỏ qua đến nội dung chính</a>
@@ -70,7 +75,7 @@
       </div>
       <nav class="sidebar-nav" aria-label="Điều hướng chính"></nav>
       <div class="sidebar-user" id="sidebar-user"></div>
-      <p class="sidebar-foot">Số liệu hiển thị là dữ liệu mẫu.</p>
+      <p class="sidebar-foot">Dữ liệu lưu trên máy này, dùng được khi mất mạng.</p>
     </aside>
 
     <div class="main">
@@ -80,8 +85,10 @@
           <h1 id="page-title" data-app-name></h1>
         </div>
         <div class="topbar-right">
-          <span class="badge badge-neutral">Dữ liệu mẫu</span>
-          <div id="topbar-user"></div>
+          <div class="role-switch segmented has-thumb" role="group" aria-label="Chọn chế độ" id="role-switch">
+            <button type="button" class="segment" data-role="member">Thành viên</button>
+            <button type="button" class="segment" data-role="counter">Quầy</button>
+          </div>
         </div>
       </header>
 
@@ -97,28 +104,11 @@
 
   <noscript><p style="padding:24px">Vui lòng bật JavaScript để sử dụng ứng dụng.</p></noscript>
 
-  <!-- Thư viện đọc Excel (dùng ở Tiện ích → Nhập dữ liệu) -->
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
-
-  <!-- Thứ tự nạp: ui → config → dữ liệu → core → các trang → app -->
+  <!-- Thư viện QR đặt sẵn trong vendor/ để chạy được khi mất mạng -->
+  <script src="vendor/qrcode.js" defer></script>
+  <script src="vendor/html5-qrcode.min.js" defer></script>
   <script src="js/ui.js" defer></script>
-  <script src="js/config.js" defer></script>
-  <script src="js/ai.js" defer></script>
   <script src="data/seed.js" defer></script>
-  <script src="js/core.js" defer></script>
-  <script src="js/pages/home.js" defer></script>
-  <script src="js/pages/list.js" defer></script>
-  <script src="js/pages/detail.js" defer></script>
-  <script src="js/pages/form.js" defer></script>
-  <script src="js/pages/business.js" defer></script>
-  <script src="js/pages/tools.js" defer></script>
-  <script src="js/pages/login.js" defer></script>
   <script src="js/app.js" defer></script>
-
-  <!-- Đăng nhập Firebase (CONFIG.auth.enabled). Module chạy sau các script defer ở trên.
-       Lưu ý: module KHÔNG chạy khi mở bằng file:// → dùng Live Server hoặc Vercel (app tự hiện nút "Dùng thử"). -->
-  <script type="module" src="js/auth.js"></script>
-  <!-- Đồng bộ dữ liệu Firestore (tùy chọn): bật CONFIG.firebase.enabled = true rồi bỏ comment dòng dưới -->
-  <!-- <script type="module" src="js/firebase.js"></script> -->
 </body>
 </html>

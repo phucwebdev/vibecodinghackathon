@@ -1,158 +1,498 @@
-/* =========================================================
-   APP – khai báo route, chặn trang khi chưa đăng nhập, chuyển sự kiện tới trang đang mở
-   Thêm trang mới: tạo js/pages/ten.js (App.pages.ten = {title, render, mount?, on?, leave?})
-   → nạp trong index.html → thêm 1 dòng vào ROUTES dưới đây → thêm vào CONFIG.menu nếu cần.
-   ========================================================= */
+/* THẺ THÀNH VIÊN 2 ĐẦU (Thành viên & Quầy)
+ * Toàn bộ dữ liệu lưu localStorage → chạy được khi mất mạng.
+ * Quy tắc (công bố ở trang Thể lệ): 10.000đ = 1 điểm · Đồng < 1.000 · Bạc 1.000–4.999 · Vàng ≥ 5.000
+ */
 (function () {
   'use strict';
+  var esc = UI.esc, icon = UI.icon, num = UI.number;
 
-  var ROUTES = {
-    '':           'home',
-    'danh-sach':  'list',
-    'chi-tiet':   'detail',
-    'them':       'add',
-    'sua':        'edit',
-    'kinh-doanh': 'business',
-    'tien-ich':   'tools',
-    'dang-nhap':  'login'
+  /* ---------- Quy tắc ---------- */
+  var RULES = {
+    vndPerPoint: 10000,
+    tiers: [
+      { key: 'dong', name: 'Đồng', min: 0, color: '#9A5B2E' },
+      { key: 'bac', name: 'Bạc', min: 1000, color: '#64748B' },
+      { key: 'vang', name: 'Vàng', min: 5000, color: '#B7791F' }
+    ]
   };
-  var LOGIN = 'dang-nhap';
-  var AUTH_WAIT_MS = 6000;          // quá thời gian này chưa có phản hồi Firebase → cho dùng thử
-
-  App.buildShell();
-
-  var routes = {}, blocked = false;
-  Object.keys(ROUTES).forEach(function (key) {
-    var p = App.pages[ROUTES[key]];
-    if (!p) return;
-    routes[key] = {
-      get title() { return p.title; },
-      render: function () {
-        var gate = guard(key);
-        blocked = !!gate;
-        document.body.classList.toggle('auth-page', key === LOGIN && !gate);
-        return gate || p.render();
-      },
-      mount: function (view) { if (!blocked && p.mount) p.mount(view); }
-    };
-  });
-
-  /* ---------- Chặn trang: trả về HTML chờ nếu chưa được vào ---------- */
-  function guard(key) {
-    var au = App.auth;
-    if (!au.enabled) return key === LOGIN ? wait() + redirect('') : '';
-    if (key === LOGIN) return au.ready && au.isIn() ? wait() + redirect(nextRoute()) : (au.ready ? '' : wait());
-    if (au.guest) return '';                     // khách dùng thử: vào ngay, không chờ Firebase
-    if (!au.ready) return wait();
-    if (!au.isIn()) return wait() + redirect(LOGIN + '?next=' + encodeURIComponent(currentFull()));
-    return '';
+  var REWARDS = window.SEED.rewards;
+  function tierOf(points) {
+    var t = RULES.tiers[0];
+    RULES.tiers.forEach(function (x) { if (points >= x.min) t = x; });
+    return t;
   }
-  function wait() { return '<div class="auth-wait">' + UI.skeleton(3) + '</div>'; }
-  function redirect(to) { setTimeout(function () { location.replace('#/' + to); }, 0); return ''; }
-  function currentFull() { return (location.hash || '').replace(/^#\/?/, ''); }
-  function nextRoute() {
-    var n = App.param('next');
-    return n && n.indexOf(LOGIN) !== 0 ? n : '';
+  function nextTier(points) {
+    for (var i = 0; i < RULES.tiers.length; i++) if (points < RULES.tiers[i].min) return RULES.tiers[i];
+    return null;
   }
 
-  var last = null;
-  function page() { return App.pages[ROUTES[App.router.current()]]; }
-
-  /* Trang con (chi tiết, sửa) vẫn sáng mục menu cha */
-  function markParent(key, p) {
-    var inMenu = App.config.menu.some(function (m) { return m.route === key; });
-    if (inMenu || !p || !p.parent) return;
-    document.querySelectorAll('[data-route="' + p.parent + '"]').forEach(function (a) { a.setAttribute('aria-current', 'page'); });
+  /* ---------- Dữ liệu (localStorage) ---------- */
+  var KEY = 'the-thanh-vien.v1';
+  var db = UI.store.get(KEY, null) || { members: [], txs: [], wallet: [], current: null, role: 'member', seq: 0 };
+  function save() { UI.store.set(KEY, db); }
+  function normCode(s) { return String(s || '').trim().toUpperCase(); }
+  function findMember(code) {
+    var c = normCode(code);
+    if (!c) return null;
+    return db.members.filter(function (m) { return m.id === c || m.phone === c; })[0] || null;
+  }
+  function currentMember() { return db.current ? findMember(db.current) : null; }
+  function txExists(code) { var c = normCode(code); return db.txs.some(function (t) { return t.id === c; }); }
+  function nowIso() { return new Date().toISOString(); }
+  function fmtTime(s) {
+    var d = new Date(s);
+    if (isNaN(d)) return '';
+    function p(n) { return ('0' + n).slice(-2); }
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function newMemberId() {
+    var id;
+    do { db.seq += 1; id = 'TV-' + ('000' + db.seq).slice(-4); } while (findMember(id));
+    return id;
+  }
+  function suggestTx() {
+    var d = new Date();
+    function p(n) { return ('0' + n).slice(-2); }
+    return 'GD-' + p(d.getDate()) + p(d.getMonth() + 1) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
   }
 
-  App.router = UI.router({ appName: App.config.appName, defaultRoute: '', routes: routes });
-
-  /* Rời trang → gọi leave() (VD: tắt camera) */
-  window.addEventListener('hashchange', function () {
-    var cur = page();
-    if (last && last !== cur && last.leave) last.leave();
-    last = cur;
-    markParent(App.router.current(), cur);
-  });
-
-  last = page();
-  markParent(App.router.current(), page());
-  var refresh = App.router.refresh;
-  App.router.refresh = function () { refresh(); markParent(App.router.current(), page()); };
-
-  /* =======================================================
-     Người dùng: nút avatar ở thanh trên + khối tài khoản ở menu trái
-     ======================================================= */
-  function avatar(size) {
-    var u = App.auth.user;
-    return u && u.photo
-      ? '<img class="avatar" src="' + UI.esc(u.photo) + '" alt="" width="' + size + '" height="' + size + '" referrerpolicy="no-referrer">'
-      : '<span class="avatar" style="width:' + size + 'px;height:' + size + 'px" aria-hidden="true">' + UI.esc(App.auth.initials()) + '</span>';
+  /* ---------- Nghiệp vụ ---------- */
+  function register(name, phone) {
+    name = String(name || '').trim().replace(/\s+/g, ' ');
+    phone = String(phone || '').replace(/[\s.\-]/g, '');
+    if (name.length < 2) return { error: 'Vui lòng nhập họ tên (ít nhất 2 ký tự).', field: 'name' };
+    if (!/^0\d{9}$/.test(phone)) return { error: 'Số điện thoại gồm 10 chữ số, bắt đầu bằng 0.', field: 'phone' };
+    if (db.members.some(function (m) { return m.phone === phone; })) return { error: 'Số điện thoại này đã có thẻ. Hãy mở thẻ bằng số điện thoại ở bên dưới.', field: 'phone' };
+    var m = { id: newMemberId(), name: name, phone: phone, points: 0, joined: nowIso() };
+    db.members.push(m); db.current = m.id; save();
+    return { member: m };
   }
-
-  function renderUser() {
-    var au = App.auth, top = document.getElementById('topbar-user'), side = document.getElementById('sidebar-user');
-    var show = au.enabled && au.isIn() && (au.user || au.guest);
-    if (top) top.innerHTML = show
-      ? '<button type="button" class="avatar-btn" data-action="account" aria-label="Tài khoản: ' + UI.esc(au.displayName()) + '">' + avatar(32) + '</button>' : '';
-    if (side) side.innerHTML = show
-      ? '<div class="user-card">' + avatar(36) + '<div class="user-main"><p class="user-name">' + UI.esc(au.displayName()) + '</p>' +
-        '<p class="user-sub">' + UI.esc(au.user ? au.user.email : 'Dữ liệu lưu trên máy này') + '</p></div>' +
-        '<button type="button" class="btn-icon" data-action="logout" aria-label="Đăng xuất">' + UI.icon('log-out') + '</button></div>' : '';
+  function earn(memberCode, amount, txCode) {
+    var m = findMember(memberCode);
+    if (!m) return { error: 'Không tìm thấy thành viên có mã này.', field: 'member' };
+    amount = Math.floor(Number(amount));
+    if (!(amount > 0)) return { error: 'Vui lòng nhập số tiền giao dịch lớn hơn 0.', field: 'amount' };
+    var code = normCode(txCode);
+    if (!code) return { error: 'Vui lòng nhập mã giao dịch.', field: 'tx' };
+    if (txExists(code)) return { error: 'Mã giao dịch ' + code + ' đã được cộng điểm trước đó. Không cộng lại.', field: 'tx', duplicate: true };
+    var pts = Math.floor(amount / RULES.vndPerPoint);
+    if (pts < 1) return { error: 'Giao dịch dưới ' + num(RULES.vndPerPoint) + 'đ chưa đủ để cộng điểm.', field: 'amount' };
+    var before = tierOf(m.points);
+    m.points += pts;
+    var after = tierOf(m.points);
+    db.txs.push({ id: code, type: 'earn', memberId: m.id, time: nowIso(), amount: amount, points: pts, balance: m.points });
+    save();
+    return { member: m, points: pts, tierUp: after.key !== before.key ? after : null };
   }
-
-  function askLogout() {
-    var au = App.auth;
-    UI.confirm({
-      title: au.user ? 'Đăng xuất khỏi ' + au.displayName() + '?' : 'Thoát chế độ dùng thử?',
-      message: au.user ? (au.user.email || '') + ' · Bạn có thể đăng nhập lại bất cứ lúc nào.' : 'Dữ liệu dùng thử vẫn được giữ trên máy này.',
-      confirmText: au.user ? 'Đăng xuất' : 'Thoát'
-    }).then(function (ok) {
-      if (!ok) return;
-      au.signOut().then(function () { UI.toast('Đã đăng xuất', 'info'); });
+  function redeem(rewardId) {
+    var m = currentMember();
+    var r = REWARDS.filter(function (x) { return x.id === rewardId; })[0];
+    if (!m || !r) return { error: 'Không thực hiện được. Vui lòng thử lại.' };
+    if (m.points < r.cost) return { error: 'Bạn cần thêm ' + num(r.cost - m.points) + ' điểm để đổi ưu đãi này.' };
+    m.points -= r.cost;
+    var id = 'DOI-' + Date.now().toString(36).toUpperCase();
+    db.txs.push({ id: id, type: 'redeem', memberId: m.id, time: nowIso(), amount: 0, points: -r.cost, balance: m.points, note: r.name });
+    db.wallet.push({ id: 'VC-' + Math.random().toString(36).slice(2, 8).toUpperCase(), memberId: m.id, rewardId: r.id, name: r.name, desc: r.desc, time: nowIso() });
+    save();
+    return { reward: r, member: m };
+  }
+  function loadSample() {
+    var S = window.SEED;
+    S.members.forEach(function (sm) {
+      var m = db.members.filter(function (x) { return x.id === sm.id; })[0];
+      if (m) { m.name = sm.name; m.phone = sm.phone; m.points = sm.points; m.joined = sm.joined; }
+      else db.members.push(JSON.parse(JSON.stringify(sm)));
     });
+    /* bỏ giao dịch cũ của các thành viên mẫu để điểm khớp đúng file BTC, rồi nạp sổ mẫu (không cộng điểm lại) */
+    var ids = S.members.map(function (m) { return m.id; });
+    db.txs = db.txs.filter(function (t) { return ids.indexOf(t.memberId) < 0; });
+    db.wallet = db.wallet.filter(function (w) { return ids.indexOf(w.memberId) < 0; });
+    S.txs.forEach(function (t) { db.txs.push(JSON.parse(JSON.stringify(t))); });
+    db.current = 'KT-004';
+    save();
   }
 
-  document.addEventListener('click', function (e) {
-    var btn = e.target.closest('[data-action="account"], [data-action="logout"]');
-    if (btn && !btn.closest('#view')) askLogout();
-  });
+  /* ---------- Thành phần giao diện ---------- */
+  function qrSvg(text) {
+    try {
+      var q = window.qrcode(0, 'M'); q.addData(text); q.make();
+      return q.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+    } catch (e) { return ''; }
+  }
+  function cardHtml(m) {
+    var t = tierOf(m.points);
+    return '<div class="mcard tier-' + t.key + '" aria-label="Thẻ thành viên hạng ' + t.name + '">' +
+      '<div class="mcard-top"><span>Thẻ thành viên</span><span class="tier-badge">' + icon('star', 16) + 'Hạng ' + t.name + '</span></div>' +
+      '<div><div class="mcard-name">' + esc(m.name) + '</div><div class="mcard-label">Điểm hiện có</div><div class="mcard-points">' + num(m.points) + '</div></div>' +
+      '<div class="mcard-body"><div><div class="mcard-label">Mã thành viên</div><div class="mcard-code">' + esc(m.id) + '</div></div>' +
+      '<div class="mcard-qr" role="img" aria-label="Mã QR của thẻ ' + esc(m.id) + '">' + qrSvg(m.id) + '</div></div>' +
+    '</div>';
+  }
+  function progressHtml(m) {
+    var n = nextTier(m.points);
+    if (!n) return '<p class="small muted" style="text-align:center">Bạn đang ở hạng cao nhất. Cảm ơn bạn đã gắn bó!</p>';
+    var cur = tierOf(m.points), pct = Math.round((m.points - cur.min) / (n.min - cur.min) * 100);
+    return '<div class="stack" style="gap:8px"><div class="row" style="justify-content:space-between"><span class="small">Còn <strong>' + num(n.min - m.points) + ' điểm</strong> nữa lên hạng ' + n.name + '</span><span class="small muted">' + pct + '%</span></div>' +
+      '<div class="progress" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100"><span style="width:' + pct + '%"></span></div></div>';
+  }
+  function emptyHtml(ic, title, text, btn) {
+    return '<div class="empty"><div class="empty-icon">' + icon(ic) + '</div><p class="empty-title">' + title + '</p><p class="empty-text">' + text + '</p>' + (btn || '') + '</div>';
+  }
+  function needMember() {
+    return emptyHtml('card', 'Bạn chưa mở thẻ', 'Đăng ký thẻ thành viên để tích điểm và đổi ưu đãi.', '<a class="btn btn-primary" href="#/the">Đăng ký thẻ</a>');
+  }
+  function txRow(t, showMember) {
+    var earnT = t.type === 'earn';
+    var m = showMember ? findMember(t.memberId) : null;
+    return '<div class="item"><div class="item-main"><div class="item-title">' + (earnT ? 'Cộng điểm' : 'Đổi điểm') +
+      (t.note ? ' · ' + esc(t.note) : '') + (m ? ' · ' + esc(m.name) : '') + '</div>' +
+      '<div class="item-sub">' + fmtTime(t.time) + ' · Mã ' + esc(t.id) + (earnT && t.amount ? ' · ' + UI.money(t.amount) : '') + '</div></div>' +
+      '<div class="item-meta" style="text-align:right"><div class="' + (earnT ? 'pts-plus' : 'pts-minus') + '">' + (t.points > 0 ? '+' : '−') + num(Math.abs(t.points)) + '</div>' +
+      '<div class="small muted">Còn ' + num(t.balance) + '</div></div></div>';
+  }
+  function fieldError(form, name, msg) {
+    form.querySelectorAll('.field-error').forEach(function (e) { e.remove(); });
+    form.querySelectorAll('.is-invalid').forEach(function (e) { e.classList.remove('is-invalid'); e.removeAttribute('aria-invalid'); });
+    if (!msg) return;
+    var input = form.querySelector('[name="' + name + '"]');
+    if (!input) { UI.toast(msg, 'error'); return; }
+    input.classList.add('is-invalid'); input.setAttribute('aria-invalid', 'true');
+    var p = document.createElement('p'); p.className = 'field-error'; p.setAttribute('role', 'alert'); p.textContent = msg;
+    (input.closest('.field') || input.parentNode).appendChild(p);
+    input.focus();
+  }
 
-  /* Đổi trạng thái đăng nhập → cập nhật giao diện + chuyển trang phù hợp */
-  App.auth.onChange(function () {
-    renderUser();
-    var key = App.router.current();
-    if (key === LOGIN && App.auth.isIn()) location.replace('#/' + nextRoute());
-    else if (key !== LOGIN && App.auth.enabled && App.auth.ready && !App.auth.isIn()) {
-      var cur = currentFull();
-      if (cur.indexOf(LOGIN) === 0) return;       // đang chuyển tới trang đăng nhập rồi
-      location.replace('#/' + LOGIN + (cur ? '?next=' + encodeURIComponent(cur) : ''));
+  /* ---------- TRANG: Thẻ của tôi (Thành viên) ---------- */
+  function pageCard() {
+    var m = currentMember();
+    if (m) {
+      return '<div class="narrow stack">' + cardHtml(m) + progressHtml(m) +
+        '<div class="grid-2"><a class="btn btn-primary" href="#/uu-dai">' + icon('gift') + 'Đổi ưu đãi</a>' +
+        '<a class="btn btn-secondary" href="#/lich-su">' + icon('clock') + 'Lịch sử điểm</a></div>' +
+        '<p class="small muted" style="text-align:center">Đưa mã QR hoặc đọc mã thành viên cho nhân viên tại quầy để tích điểm.</p>' +
+        '<button type="button" class="btn btn-text" data-action="leave">Mở thẻ khác</button></div>';
     }
-    else App.router.refresh();
+    return '<div class="narrow stack">' +
+      '<div class="page-head"><div><h2 class="h2">Đăng ký thẻ thành viên</h2><p class="muted">Tích điểm mỗi lần mua hàng, đổi điểm lấy ưu đãi.</p></div></div>' +
+      '<form class="card stack" id="f-register" novalidate>' +
+        '<div class="field"><label for="r-name">Họ và tên</label><input class="input" id="r-name" name="name" autocomplete="name" placeholder="VD: Nguyễn Minh An"></div>' +
+        '<div class="field"><label for="r-phone">Số điện thoại</label><input class="input" id="r-phone" name="phone" inputmode="numeric" autocomplete="tel" placeholder="VD: 0912345678"></div>' +
+        '<button class="btn btn-primary btn-block" type="submit">Đăng ký thẻ</button>' +
+      '</form>' +
+      '<form class="card stack" id="f-open" novalidate>' +
+        '<div class="field"><label for="o-code">Đã có thẻ? Nhập mã thành viên hoặc số điện thoại</label>' +
+        '<div class="input-row"><input class="input" id="o-code" name="code" placeholder="VD: KT-004" autocapitalize="characters"><button class="btn btn-secondary" type="submit">Mở thẻ</button></div></div>' +
+      '</form>' +
+      (db.members.length ? '' : '<button type="button" class="btn btn-text" data-action="sample">' + icon('download') + 'Nạp dữ liệu mẫu</button>') +
+    '</div>';
+  }
+
+  /* ---------- TRANG: Ưu đãi + ví ---------- */
+  function pageRewards() {
+    var m = currentMember();
+    if (!m) return needMember();
+    var mine = db.wallet.filter(function (w) { return w.memberId === m.id; }).reverse();
+    return '<div class="narrow stack">' +
+      '<div class="member-mini"><div><div class="small muted">Điểm hiện có</div><div class="h3">' + num(m.points) + ' điểm</div></div><span class="badge badge-neutral">Hạng ' + tierOf(m.points).name + '</span></div>' +
+      '<div class="section-head"><h2 class="h4">Đổi điểm lấy ưu đãi</h2></div>' +
+      '<div class="list">' + REWARDS.map(function (r) {
+        var ok = m.points >= r.cost;
+        return '<div class="item reward"><div class="item-main"><div class="item-title">' + esc(r.name) + '</div><div class="item-sub">' + esc(r.desc) + ' · ' + num(r.cost) + ' điểm' +
+          (ok ? '' : ' · thiếu ' + num(r.cost - m.points)) + '</div></div>' +
+          '<button type="button" class="btn btn-sm ' + (ok ? 'btn-primary' : 'btn-secondary') + '" data-action="redeem" data-id="' + r.id + '">Đổi</button></div>';
+      }).join('') + '</div>' +
+      '<div class="section-head"><h2 class="h4">Ví ưu đãi của tôi</h2><span class="badge badge-neutral">' + mine.length + '</span></div>' +
+      (mine.length ? '<div class="stack" style="gap:8px">' + mine.map(function (w) {
+        return '<div class="voucher"><div><div class="item-title">' + esc(w.name) + '</div><div class="small muted">' + esc(w.desc || '') + ' · Đổi lúc ' + fmtTime(w.time) + '</div></div><code>' + esc(w.id) + '</code></div>';
+      }).join('') + '</div>' : emptyHtml('gift', 'Ví chưa có ưu đãi', 'Đổi điểm ở danh sách phía trên, ưu đãi sẽ nằm ở đây.')) +
+    '</div>';
+  }
+
+  /* ---------- TRANG: Lịch sử ---------- */
+  function pageHistory() {
+    var m = currentMember();
+    if (!m) return needMember();
+    var list = db.txs.filter(function (t) { return t.memberId === m.id; }).sort(function (a, b) { return a.time < b.time ? 1 : -1; });
+    return '<div class="narrow stack"><div class="page-head"><div><h2 class="h2">Lịch sử điểm</h2><p class="muted">' + esc(m.name) + ' · ' + esc(m.id) + '</p></div></div>' +
+      (list.length ? '<div class="list">' + list.map(function (t) { return txRow(t); }).join('') + '</div>'
+        : emptyHtml('clock', 'Chưa có biến động điểm', 'Mua hàng và đọc mã thành viên tại quầy để được cộng điểm.')) + '</div>';
+  }
+
+  /* ---------- TRANG: Quầy – cộng điểm ---------- */
+  var lastResult = null, scanner = null, prefill = '';
+  function memberMini(code) {
+    var m = findMember(code);
+    if (!normCode(code)) return '';
+    if (!m) return '<p class="small muted">Chưa tìm thấy thành viên có mã này.</p>';
+    return '<div class="member-mini"><div><div class="item-title">' + esc(m.name) + '</div><div class="small muted">' + esc(m.id) + ' · ' + esc(m.phone) + '</div></div>' +
+      '<div style="text-align:right"><div class="h4">' + num(m.points) + ' điểm</div><span class="badge badge-neutral">Hạng ' + tierOf(m.points).name + '</span></div></div>';
+  }
+  function resultHtml(r) {
+    var t = tierOf(r.member.points);
+    var confetti = '';
+    if (r.tierUp) {
+      var colors = ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6'];
+      for (var i = 0; i < 24; i++) confetti += '<i style="left:' + (i * 4.2) + '%;background:' + colors[i % 5] + ';animation-delay:' + (i % 6) * 80 + 'ms"></i>';
+      confetti = '<div class="confetti" aria-hidden="true">' + confetti + '</div>';
+    }
+    return '<div class="result" role="status">' + confetti +
+      '<div class="small muted">Đã cộng cho ' + esc(r.member.name) + ' (' + esc(r.member.id) + ')</div>' +
+      '<div class="result-points">+' + num(r.points) + ' điểm</div>' +
+      '<div>Số dư mới: <strong>' + num(r.member.points) + ' điểm</strong> · Hạng ' + t.name + '</div>' +
+      (r.tierUp ? '<div class="tierup" style="background:' + r.tierUp.color + '">' + icon('star', 18) + 'Lên hạng ' + r.tierUp.name + '!</div>' : '') +
+    '</div>';
+  }
+  function pageCounter() {
+    var code = prefill; prefill = '';
+    return '<div class="narrow stack">' +
+      '<div class="page-head"><div><h2 class="h2">Cộng điểm tại quầy</h2><p class="muted">' + num(RULES.vndPerPoint) + 'đ = 1 điểm. Mỗi mã giao dịch chỉ cộng một lần.</p></div></div>' +
+      '<div id="counter-result">' + (lastResult ? resultHtml(lastResult) : '') + '</div>' +
+      '<form class="card stack" id="f-earn" novalidate>' +
+        '<div class="field"><label for="e-member">Mã thành viên</label>' +
+          '<div class="input-row"><input class="input" id="e-member" name="member" placeholder="VD: KT-004" autocapitalize="characters" autocomplete="off" value="' + esc(code) + '">' +
+          '<button type="button" class="btn btn-secondary" data-action="scan">' + icon('qr') + 'Quét QR</button></div></div>' +
+        '<div id="scan-box" hidden class="stack" style="gap:8px"><div id="qr-reader"></div>' +
+          '<div class="row" style="justify-content:center;gap:8px"><label class="btn btn-secondary btn-sm">' + icon('upload', 16) + 'Chọn ảnh QR<input type="file" accept="image/*" id="qr-file" hidden></label>' +
+          '<button type="button" class="btn btn-text btn-sm" data-action="scan-stop">Đóng máy quét</button></div></div>' +
+        '<div id="member-mini">' + memberMini(code) + '</div>' +
+        '<div class="field"><label for="e-amount">Số tiền giao dịch (đ)</label><input class="input" id="e-amount" name="amount" inputmode="numeric" placeholder="VD: 1.000.000" autocomplete="off">' +
+          '<p class="field-hint" id="pts-preview">Nhập số tiền để xem số điểm sẽ cộng.</p></div>' +
+        '<div class="field"><label for="e-tx">Mã giao dịch</label><input class="input" id="e-tx" name="tx" autocapitalize="characters" autocomplete="off" value="' + suggestTx() + '">' +
+          '<p class="field-hint">Mã trên hóa đơn. Có thể sửa mã gợi ý sẵn.</p></div>' +
+        '<button class="btn btn-primary btn-block" type="submit">' + icon('plus-circle') + 'Cộng điểm</button>' +
+      '</form></div>';
+  }
+  function stopScan() {
+    var s = scanner; scanner = null;
+    if (s) { try { s.stop().then(function () { s.clear(); }).catch(function () {}); } catch (e) { /* bỏ qua */ } }
+    var box = document.getElementById('scan-box'); if (box) box.hidden = true;
+  }
+  function onScanned(text) {
+    var code = normCode(text);
+    stopScan();
+    var input = document.getElementById('e-member');
+    if (input) { input.value = code; document.getElementById('member-mini').innerHTML = memberMini(code); }
+    var m = findMember(code);
+    UI.toast(m ? 'Đã đọc mã ' + code + ' – ' + m.name : 'Đã đọc mã ' + code + ' nhưng chưa có thành viên này', m ? 'success' : 'error');
+    var amount = document.getElementById('e-amount'); if (m && amount) amount.focus();
+  }
+  function startScan() {
+    var box = document.getElementById('scan-box');
+    if (!box) return;
+    box.hidden = false;
+    if (!window.Html5Qrcode) { UI.toast('Không mở được máy quét. Hãy nhập mã thành viên bằng tay.', 'error'); return; }
+    if (scanner) return;
+    scanner = new window.Html5Qrcode('qr-reader');
+    scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 220, height: 220 } }, onScanned, function () {})
+      .catch(function () {
+        scanner = null;
+        UI.toast('Không dùng được camera. Hãy cấp quyền camera, chọn ảnh QR hoặc nhập mã bằng tay.', 'error');
+      });
+  }
+  function scanFile(file) {
+    if (!file || !window.Html5Qrcode) return;
+    var live = scanner; scanner = null;
+    var run = function () {
+      var s = new window.Html5Qrcode('qr-reader');
+      s.scanFile(file, false).then(function (text) { s.clear(); onScanned(text); })
+        .catch(function () { UI.toast('Không đọc được mã QR trong ảnh. Hãy thử ảnh rõ hơn.', 'error'); });
+    };
+    if (live) live.stop().then(function () { live.clear(); run(); }).catch(run); else run();
+  }
+
+  /* ---------- TRANG: Quầy – thành viên & thống kê ---------- */
+  var memberQuery = '';
+  function membersListHtml() {
+    var list = db.members.filter(function (m) { return UI.match(memberQuery, m.name + ' ' + m.id + ' ' + m.phone); })
+      .sort(function (a, b) { return b.points - a.points; });
+    if (!list.length) return emptyHtml('users', memberQuery ? 'Không tìm thấy thành viên' : 'Chưa có thành viên', memberQuery ? 'Thử tìm bằng tên, mã hoặc số điện thoại khác.' : 'Nạp dữ liệu mẫu ở trang Thể lệ hoặc đăng ký thẻ ở chế độ Thành viên.');
+    return '<div class="list">' + list.map(function (m) {
+      var t = tierOf(m.points);
+      return '<button type="button" class="item item-link" data-action="pick" data-id="' + esc(m.id) + '" style="width:100%;text-align:left">' +
+        '<div class="item-main"><div class="item-title">' + esc(m.name) + '</div><div class="item-sub">' + esc(m.id) + ' · ' + esc(m.phone) + '</div></div>' +
+        '<div class="item-meta" style="text-align:right"><div><strong>' + num(m.points) + '</strong> điểm</div><span class="small"><span class="dot" style="background:' + t.color + '"></span>' + t.name + '</span></div></button>';
+    }).join('') + '</div>';
+  }
+  function pageMembers() {
+    var issued = db.txs.reduce(function (s, t) { return s + (t.type === 'earn' ? t.points : 0); }, 0);
+    var recent = db.txs.slice().sort(function (a, b) { return a.time < b.time ? 1 : -1; }).slice(0, 5);
+    return '<div class="stack">' +
+      '<div class="stat-grid">' +
+        '<div class="stat"><div class="stat-value">' + num(db.members.length) + '</div><div class="stat-label">Thành viên</div></div>' +
+        '<div class="stat"><div class="stat-value">' + num(issued) + '</div><div class="stat-label">Điểm đã phát</div></div>' +
+        '<div class="stat"><div class="stat-value">' + num(db.wallet.length) + '</div><div class="stat-label">Ưu đãi đã đổi</div></div>' +
+      '</div>' +
+      '<div class="field"><label for="m-q" class="sr-only">Tìm thành viên</label><input class="input" id="m-q" type="search" placeholder="Tìm theo tên, mã hoặc số điện thoại" value="' + esc(memberQuery) + '"></div>' +
+      '<p class="small muted">Chạm vào một thành viên để cộng điểm.</p>' +
+      '<div id="members-list">' + membersListHtml() + '</div>' +
+      (recent.length ? '<div class="section-head"><h2 class="h4">Giao dịch gần đây</h2></div><div class="list">' + recent.map(function (t) { return txRow(t, true); }).join('') + '</div>' : '') +
+    '</div>';
+  }
+
+  /* ---------- TRANG: Thể lệ ---------- */
+  function pageRules() {
+    var T = RULES.tiers;
+    return '<div class="narrow stack">' +
+      '<div class="card stack"><h2 class="h4">Cách tích điểm</h2><p>Mỗi <strong>' + num(RULES.vndPerPoint) + 'đ</strong> trên hóa đơn = <strong>1 điểm</strong> (làm tròn xuống). Nhân viên cộng điểm tại quầy bằng mã thành viên và mã giao dịch. Mỗi mã giao dịch chỉ được cộng một lần.</p></div>' +
+      '<div class="card stack"><h2 class="h4">Hạng thành viên</h2><p class="small muted">Hạng tự đổi theo số điểm hiện có, thẻ đổi màu theo hạng.</p>' +
+        '<table class="rule-table"><tr><th>Hạng</th><th>Mốc điểm</th></tr>' +
+        '<tr><td><span class="dot" style="background:' + T[0].color + '"></span>Đồng</td><td>Dưới ' + num(T[1].min) + ' điểm</td></tr>' +
+        '<tr><td><span class="dot" style="background:' + T[1].color + '"></span>Bạc</td><td>Từ ' + num(T[1].min) + ' đến ' + num(T[2].min - 1) + ' điểm</td></tr>' +
+        '<tr><td><span class="dot" style="background:' + T[2].color + '"></span>Vàng</td><td>Từ ' + num(T[2].min) + ' điểm trở lên</td></tr></table></div>' +
+      '<div class="card stack"><h2 class="h4">Đổi điểm lấy ưu đãi</h2><table class="rule-table"><tr><th>Ưu đãi</th><th>Điểm cần đổi</th></tr>' +
+        REWARDS.map(function (r) { return '<tr><td>' + esc(r.name) + '</td><td>' + num(r.cost) + ' điểm</td></tr>'; }).join('') + '</table>' +
+        '<p class="small muted">Điểm bị trừ ngay khi đổi; ưu đãi nằm trong Ví ưu đãi của thành viên.</p></div>' +
+      '<div class="card stack"><h2 class="h4">Dữ liệu mẫu</h2><p class="small muted">Nạp 8 thành viên, 7 giao dịch và 3 ưu đãi do Ban tổ chức cung cấp. Điểm của thành viên mẫu trở về đúng số trong bộ dữ liệu; thẻ bạn tự đăng ký được giữ nguyên. Dữ liệu lưu trên máy này và dùng được khi mất mạng.</p>' +
+        '<button type="button" class="btn btn-primary" data-action="sample">' + icon('download') + 'Nạp dữ liệu mẫu</button>' +
+        '<button type="button" class="btn btn-text" data-action="reset">Xóa toàn bộ dữ liệu trên máy này</button></div>' +
+    '</div>';
+  }
+
+  /* ---------- Điều hướng theo vai ---------- */
+  var MENUS = {
+    member: [
+      { key: 'the', label: 'Thẻ', icon: 'card' },
+      { key: 'uu-dai', label: 'Ưu đãi', icon: 'gift' },
+      { key: 'lich-su', label: 'Lịch sử', icon: 'clock' },
+      { key: 'the-le', label: 'Thể lệ', icon: 'info' }
+    ],
+    counter: [
+      { key: 'quay', label: 'Cộng điểm', icon: 'plus-circle' },
+      { key: 'thanh-vien', label: 'Thành viên', icon: 'users' },
+      { key: 'the-le', label: 'Thể lệ', icon: 'info' }
+    ]
+  };
+  function renderNav() {
+    var menu = MENUS[db.role] || MENUS.member;
+    document.querySelector('.sidebar-nav').innerHTML = menu.map(function (m) {
+      return '<a class="side-link" href="#/' + m.key + '" data-route="' + m.key + '">' + icon(m.icon) + '<span>' + m.label + '</span></a>';
+    }).join('');
+    document.querySelector('.tabbar').innerHTML = menu.map(function (m) {
+      return '<a class="tab" href="#/' + m.key + '" data-route="' + m.key + '"><span class="tab-pill">' + icon(m.icon, 22) + '</span><span>' + m.label + '</span></a>';
+    }).join('');
+    var sw = document.getElementById('role-switch');
+    sw.style.setProperty('--seg-i', db.role === 'counter' ? 1 : 0);
+    sw.querySelectorAll('[data-role]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-role') === db.role)); });
+    var su = document.getElementById('sidebar-user');
+    if (su) su.innerHTML = '<div class="small muted">Đang ở chế độ</div><strong>' + (db.role === 'counter' ? 'Quầy (nhân viên)' : 'Thành viên') + '</strong>';
+  }
+  function setRole(role) {
+    if (db.role === role) return;
+    db.role = role; save(); lastResult = null; stopScan();
+    renderNav();
+    var target = role === 'counter' ? 'quay' : 'the';
+    if (router.current() === target) router.refresh(); else router.go(target);
+  }
+
+  document.querySelectorAll('[data-app-name]').forEach(function (e) { e.textContent = 'Thẻ thành viên'; });
+  document.querySelectorAll('[data-brand-icon]').forEach(function (e) { e.innerHTML = icon('card', 20); });
+  renderNav();
+
+  function wrap(fn) { return function () { stopScan(); return fn(); }; }
+  var router = UI.router({
+    appName: 'Thẻ thành viên',
+    defaultRoute: db.role === 'counter' ? 'quay' : 'the',
+    routes: {
+      'the': { title: 'Thẻ của tôi', render: wrap(pageCard) },
+      'uu-dai': { title: 'Ưu đãi', render: wrap(pageRewards) },
+      'lich-su': { title: 'Lịch sử điểm', render: wrap(pageHistory) },
+      'quay': { title: 'Quầy', render: wrap(pageCounter) },
+      'thanh-vien': { title: 'Thành viên', render: wrap(pageMembers) },
+      'the-le': { title: 'Thể lệ', render: wrap(pageRules) }
+    }
   });
-  renderUser();
+  /* Mở trang thuộc vai khác (VD: bấm link) → tự chuyển vai cho khớp menu */
+  function syncRole() {
+    var k = router.current();
+    var inRole = (MENUS[db.role] || []).some(function (m) { return m.key === k; });
+    if (!inRole) {
+      db.role = db.role === 'counter' ? 'member' : 'counter'; save(); renderNav(); router.refresh();
+    }
+  }
+  window.addEventListener('hashchange', function () { setTimeout(syncRole, 0); });
+  syncRole();
 
-  /* Firebase không phản hồi (mất mạng, mở bằng file://) → vẫn cho vào bằng "Dùng thử" */
-  if (App.auth.enabled && !App.auth.ready) setTimeout(function () { App.auth.fail(); }, AUTH_WAIT_MS);
+  /* ---------- Sự kiện ---------- */
+  document.getElementById('role-switch').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-role]'); if (b) setRole(b.getAttribute('data-role'));
+  });
 
-  /* ---------- Ủy quyền sự kiện: mỗi trang tự xử lý qua page.on ---------- */
   var view = document.getElementById('view');
-  ['click', 'input', 'change', 'submit'].forEach(function (type) {
-    view.addEventListener(type, function (e) {
-      var p = page();
-      if (!p || !p.on || !p.on[type]) return;
-      try {
-        if (type === 'click') {
-          var btn = e.target.closest('[data-action]');
-          if (!btn || btn.disabled) return;
-          p.on.click(e, btn, btn.getAttribute('data-action'));
-        } else {
-          p.on[type](e);
-        }
-      } catch (err) {
-        console.error(err);
-        UI.toast('Có lỗi xảy ra. Vui lòng thử lại.', 'error');
-      }
-    });
+  view.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, r;
+    if (f.id === 'f-register') {
+      r = register(f.name.value, f.phone.value);
+      if (r.error) return fieldError(f, r.field, r.error);
+      UI.toast('Đã tạo thẻ ' + r.member.id + ' cho ' + r.member.name, 'success');
+      router.refresh();
+    } else if (f.id === 'f-open') {
+      var m = findMember(f.code.value);
+      if (!m) return fieldError(f, 'code', 'Không tìm thấy thẻ với mã hoặc số điện thoại này.');
+      db.current = m.id; save(); router.refresh();
+    } else if (f.id === 'f-earn') {
+      var amount = String(f.amount.value).replace(/[^\d]/g, '');
+      r = earn(f.member.value, amount, f.tx.value);
+      if (r.error) { fieldError(f, r.field, r.error); if (r.duplicate) UI.toast('Mã giao dịch bị trùng – không cộng điểm', 'error'); return; }
+      lastResult = r;
+      UI.toast('Đã cộng ' + num(r.points) + ' điểm cho ' + r.member.name + (r.tierUp ? ' – lên hạng ' + r.tierUp.name + '!' : ''), 'success');
+      prefill = '';
+      router.refresh();
+      window.scrollTo(0, 0);
+    }
   });
+
+  view.addEventListener('input', function (e) {
+    var t = e.target;
+    if (t.id === 'e-member') document.getElementById('member-mini').innerHTML = memberMini(t.value);
+    if (t.id === 'e-amount') {
+      var raw = t.value.replace(/[^\d]/g, '');
+      t.value = raw ? num(Number(raw)) : '';
+      var pts = Math.floor(Number(raw) / RULES.vndPerPoint);
+      document.getElementById('pts-preview').innerHTML = raw ? 'Sẽ cộng <strong>' + num(pts) + ' điểm</strong>' : 'Nhập số tiền để xem số điểm sẽ cộng.';
+    }
+    if (t.id === 'm-q') { memberQuery = t.value; document.getElementById('members-list').innerHTML = membersListHtml(); }
+    if (t.classList.contains('is-invalid')) { t.classList.remove('is-invalid'); var er = (t.closest('.field') || t.parentNode).querySelector('.field-error'); if (er) er.remove(); }
+  });
+  view.addEventListener('change', function (e) {
+    if (e.target.id === 'qr-file') { scanFile(e.target.files[0]); e.target.value = ''; }
+  });
+
+  view.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-action]'); if (!b) return;
+    var a = b.getAttribute('data-action');
+    if (a === 'sample') {
+      loadSample(); renderNav();
+      UI.toast('Đã nạp dữ liệu mẫu: 8 thành viên, 7 giao dịch', 'success');
+      router.refresh();
+    } else if (a === 'reset') {
+      UI.confirm({ title: 'Xóa toàn bộ dữ liệu?', message: 'Mọi thành viên, điểm và ưu đãi lưu trên máy này sẽ bị xóa. Không hoàn tác được.', confirmText: 'Xóa dữ liệu', danger: true })
+        .then(function (ok) {
+          if (!ok) return;
+          db = { members: [], txs: [], wallet: [], current: null, role: db.role, seq: 0 }; save(); lastResult = null;
+          UI.toast('Đã xóa dữ liệu', 'success'); router.refresh();
+        });
+    } else if (a === 'leave') {
+      db.current = null; save(); router.refresh();
+    } else if (a === 'redeem') {
+      var r0 = REWARDS.filter(function (x) { return x.id === b.getAttribute('data-id'); })[0];
+      var m = currentMember();
+      if (m && r0 && m.points < r0.cost) { UI.toast('Chưa đủ điểm: cần thêm ' + num(r0.cost - m.points) + ' điểm để đổi ' + r0.name, 'error'); return; }
+      UI.confirm({ title: 'Đổi ' + r0.name + '?', message: 'Trừ ' + num(r0.cost) + ' điểm. Số dư còn lại: ' + num(m.points - r0.cost) + ' điểm.', confirmText: 'Đổi ưu đãi' })
+        .then(function (ok) {
+          if (!ok) return;
+          var r = redeem(r0.id);
+          if (r.error) { UI.toast(r.error, 'error'); return; }
+          UI.toast('Đã đổi ' + r.reward.name + '. Ưu đãi nằm trong ví của bạn.', 'success');
+          router.refresh();
+        });
+    } else if (a === 'scan') { startScan(); }
+    else if (a === 'scan-stop') { stopScan(); }
+    else if (a === 'pick') { prefill = b.getAttribute('data-id'); lastResult = null; router.go('quay'); }
+  });
+
+  /* Chạy được khi mất mạng: lưu sẵn tệp của app */
+  if ('serviceWorker' in navigator && location.protocol === 'https:') {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
 })();

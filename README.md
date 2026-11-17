@@ -1,67 +1,61 @@
-# Quản lý cửa hàng
+# Thẻ thành viên 2 đầu (Thành viên & Quầy)
 
-> Theo dõi sản phẩm, tồn kho và doanh thu của cửa hàng – dùng tốt trên điện thoại.
-> **Sản phẩm dự thi Chung kết VIBE-CODING 2026 – Đội: …………**
+Hệ thống thẻ thành viên số hóa: khách tích điểm khi mua hàng, đổi điểm lấy ưu đãi; nhân viên cộng điểm tại quầy. Bài dự thi Vibe Coding 2026 – Bảng Kỹ thuật – đội AIFUS.
 
-- **Link demo:** https://……….vercel.app
-- **Mã nguồn:** https://github.com/……/……
-- **Tài khoản demo:** email `demo@……` · mật khẩu `……` – hoặc bấm **Dùng thử không cần tài khoản**
+- **Demo:** https://aifus-vibe-coding-2026.vercel.app (mở trên điện thoại hoặc máy tính, không cần tài khoản)
+- **Mã thử thống nhất:** `KT-004` (Dũng Phạm) – bấm **Nạp dữ liệu mẫu** ở trang *Thể lệ* trước khi thử.
 
-## Tính năng chính (theo đề bài)
+## Tính năng (theo đề)
 
-| Mã | Yêu cầu của đề | Tính năng | Màn hình |
-|---|---|---|---|
-| R1 | …… | Tổng quan 3 chỉ số + biểu đồ + danh sách cần chú ý | Tổng quan |
-| R2 | …… | Danh sách, tìm kiếm không cần dấu, lọc trạng thái, sắp xếp | Sản phẩm |
-| R3 | …… | Thêm / sửa có kiểm tra dữ liệu, chống trùng mã | Thêm mới, Chỉnh sửa |
-| R4 | …… | Xóa có xác nhận và hoàn tác | Sản phẩm, Chi tiết |
-| R5 | …… | Nhập dữ liệu từ file Excel của BTC, xuất CSV | Tiện ích |
-| R6 | …… | Mô hình kinh doanh: giả định có nguồn, 3 kịch bản, hòa vốn, hoàn vốn, kiểm tra ưu đãi có lãi | Kinh doanh |
-| R7 | …… | Đăng nhập email / Google, đăng ký, quên mật khẩu, dùng thử | Đăng nhập |
-| +  | Thiết bị ngoại vi | Tạo mã QR cho từng mục, quét QR bằng camera | Chi tiết, Tiện ích |
+| Yêu cầu | Ở đâu trong app |
+|---|---|
+| Đăng ký bằng tên + số điện thoại, sinh mã thành viên duy nhất, hiện trên thẻ | Chế độ **Thành viên** → *Thẻ* |
+| Điểm & 3 hạng Đồng / Bạc / Vàng, thẻ đổi màu theo hạng | *Thẻ* (mốc công bố ở *Thể lệ*) |
+| Chế độ Quầy: nhập mã thành viên + số tiền, cộng điểm theo tỉ lệ, cập nhật ngay | Nút **Quầy** trên thanh trên → *Cộng điểm* |
+| Chống cộng trùng: mỗi mã giao dịch chỉ cộng 1 lần | *Cộng điểm* (báo lỗi, không cộng) |
+| Đổi điểm lấy ưu đãi (3 mức), trừ điểm đúng, ví ưu đãi | *Ưu đãi* |
+| Lịch sử biến động điểm (loại, số điểm, thời gian) | *Lịch sử* |
+| Nút Nạp dữ liệu mẫu | *Thể lệ* (và màn đăng ký khi chưa có dữ liệu) |
+| Thưởng QR: QR trên thẻ + quét bằng camera ở Quầy (hoặc chọn ảnh QR) | *Thẻ*, *Cộng điểm* → **Quét QR** |
+| Mở rộng: hiệu ứng khi cộng điểm / lên hạng; thống kê mini | *Cộng điểm*, *Thành viên* |
+
+## Quy tắc đội công bố
+
+- **10.000đ = 1 điểm** (làm tròn xuống).
+- Hạng theo điểm hiện có: **Đồng** dưới 1.000 · **Bạc** 1.000–4.999 · **Vàng** từ 5.000.
+- Ưu đãi: Voucher 20.000đ = 500 điểm · Voucher 50.000đ = 1.100 điểm · Quà tặng đặc biệt = 2.000 điểm.
 
 ## Công nghệ
-- HTML + CSS + JavaScript thuần – không cần build, mở nhanh trên điện thoại, ít điểm hỏng.
-- Đăng nhập: Firebase Authentication (email/mật khẩu, Google).
-- Lưu dữ liệu: `localStorage` (hoạt động cả khi mất mạng); tùy chọn đồng bộ Firebase Firestore.
-- Thư viện qua CDN: SheetJS (đọc Excel), qrcode-generator (tạo QR), html5-qrcode (quét QR). Biểu đồ vẽ bằng SVG tự viết.
-- Triển khai: Vercel (static, Framework Preset: Other).
+
+- HTML + CSS + JavaScript thuần, không cần build. Giao diện riêng cho điện thoại (`css/mobile.css`) và máy tính (`css/desktop.css`).
+- Toàn bộ dữ liệu lưu `localStorage`; thư viện QR đặt sẵn trong `frontend/vendor/` và có service worker nên **chạy được khi mất mạng** sau lần mở đầu.
+- Thư viện: `qrcode-generator` (tạo QR), `html5-qrcode` (quét QR bằng camera – cần HTTPS hoặc localhost).
 
 ## Cách chạy
-1. Tải mã nguồn, mở `index.html` bằng trình duyệt (hoặc Live Server trong VS Code).
-2. Quét QR bằng camera cần chạy qua `https` (link Vercel).
+
+```bash
+cd frontend
+npx serve .        # hoặc mở bằng Live Server; mở trực tiếp index.html cũng chạy (trừ camera)
+```
 
 ## Dữ liệu mẫu
-- Nguồn: file dữ liệu mẫu do BTC cung cấp, chuyển sang `data/seed.js` để app có dữ liệu ngay khi mở.
-- Mọi số liệu giả lập đều gắn nhãn "Dữ liệu mẫu" / "Mô phỏng" trên giao diện.
-- Có thể nhập lại file Excel tại **Tiện ích → Nhập dữ liệu từ Excel**.
 
-## Cấu trúc thư mục
+Nguồn: `Du_lieu_mau_Vibe_Coding_bangA.xlsx` do Ban tổ chức cung cấp (sheet KT_ThanhVien, KT_GiaoDich, KT_UuDai), đã chuyển sang `frontend/data/seed.js`. Tên và số điện thoại là dữ liệu hư cấu. Điểm hiện tại đã gồm giao dịch mẫu nên khi nạp không cộng lại.
+
+## Cấu trúc
+
 ```
-index.html          Khung app, bộ icon, nạp script
-css/style.css       UI kit: màu, chữ, thành phần giao diện
-css/app.css         Bổ sung: biểu đồ, form nhiều cột, trang kinh doanh
-js/ui.js            UI kit: điều hướng, thông báo, hộp xác nhận, định dạng
-js/config.js        Cấu hình app: tên, màu, menu, lược đồ dữ liệu, giả định kinh doanh
-js/core.js          Lớp dữ liệu, định dạng, biểu đồ SVG
-js/pages/*.js       Từng trang: home, list, detail, form, business, tools
-js/app.js           Khai báo route, chuyển sự kiện tới trang
-js/firebase-init.js Khởi tạo Firebase dùng chung
-js/auth.js          Đăng nhập Firebase Authentication
-js/firebase.js      Đồng bộ Firestore (tùy chọn)
-data/seed.js        Dữ liệu mẫu
+frontend/
+├── index.html
+├── css/        style.css (bộ giao diện chung) · loyalty.css · mobile.css · desktop.css · motion.css
+├── js/         ui.js (tiện ích giao diện chung) · app.js (toàn bộ nghiệp vụ thẻ thành viên)
+├── data/seed.js
+├── vendor/     thư viện QR
+└── sw.js
 ```
 
-## Bảo mật & ổn định
-- Mọi dữ liệu người dùng nhập đều được escape trước khi hiển thị (chống XSS).
-- Mật khẩu do Firebase Authentication xử lý, app không lưu mật khẩu.
-- Không có khóa bí mật trong mã nguồn (config Firebase web là thông tin công khai).
-- Lỗi ở một trang được bắt và hiển thị thông báo thân thiện, không trắng màn hình.
+## Ghi công và phần chuẩn bị trước
 
-## Ghi công
-- Bộ khung giao diện (CSS, hàm tiện ích `ui.js`, bộ cấu hình trang) do đội chuẩn bị trước, tương tự một thư viện UI. Toàn bộ chức năng nghiệp vụ theo đề được xây dựng trong giờ thi.
-- Lucian UX/UI Prompt (MIT) – nếu dùng: `#ID tên – dùng ở đâu – đã chỉnh gì`.
-- Công cụ AI hỗ trợ sinh mã; đội kiểm tra, chạy thử trên điện thoại và chỉnh sửa.
-
-## Minh chứng
-Thư mục `minh-chung/`: ảnh màn hình điện thoại 375px từng luồng chính, trang deploy Vercel, commit cuối GitHub, bản ghi màn hình.
+- Bộ giao diện chung (`css/style.css`, `css/mobile.css`, `css/desktop.css`, `css/motion.css`, `js/ui.js`, khung `index.html`) được đội chuẩn bị trước giờ thi, không chứa chức năng của đề.
+- Toàn bộ nghiệp vụ theo đề (`js/app.js`, `css/loyalty.css`, `data/seed.js`, `sw.js`) làm trong 60 phút thi, có hỗ trợ của công cụ AI.
+- Thư mục `backend/` là khung gọi AI chuẩn bị trước, **không dùng** trong sản phẩm này.
