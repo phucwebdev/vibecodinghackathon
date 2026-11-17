@@ -1,18 +1,14 @@
 /* =========================================================
-   CHUYỂN ĐỘNG – dùng chung cho cả mobile và desktop
-   Mọi chuyển cảnh (đổi trang, đổi tab, đổi Đăng nhập ↔ Đăng ký) dùng
-   nhịp TUYẾN TÍNH (linear) để chuyển đều, mượt, không giật.
-   Kiểu trượt cụ thể của từng thiết bị khai báo trong mobile.css / desktop.css.
+   CHUYỂN ĐỘNG – dùng chung (tinh chỉnh nhẹ theo phong cách Starbucks)
    ========================================================= */
 :root {
-  --ease-swap: linear;
-  --dur-swap: 240ms;      /* đổi trang */
-  --dur-ui: 200ms;        /* nút, tab, thanh chỉ báo */
-  --swap-x: 0px;          /* khoảng trượt ngang khi đổi trang (mobile ghi đè) */
-  --swap-y: 6px;          /* khoảng trượt dọc khi đổi trang (desktop ghi đè) */
+  --ease-swap: cubic-bezier(.2,.7,.2,1);
+  --dur-swap: 240ms;
+  --dur-ui: 180ms;
+  --swap-x: 0px;
+  --swap-y: 6px;
 }
 
-/* ---------- Đổi trang ---------- */
 .page { animation: swapIn var(--dur-swap) var(--ease-swap) both; }
 .page.is-static { animation: none; }
 #view[data-dir="forward"] .page { animation-name: swapFromRight; }
@@ -31,7 +27,6 @@
   to   { opacity: 1; transform: none; }
 }
 
-/* ---------- Thanh chỉ báo trượt dưới menu đang chọn ---------- */
 .nav-indicator {
   position: absolute; pointer-events: none;
   transition: transform var(--dur-ui) var(--ease-swap), opacity var(--dur-ui) var(--ease-swap);
@@ -39,15 +34,13 @@
 .nav-indicator.is-hidden { opacity: 0; }
 .nav-indicator.no-anim { transition: none; }
 
-/* ---------- Đổi chế độ trong form đăng nhập ---------- */
 .auth-swap { animation: authSwap var(--dur-ui) var(--ease-swap) both; }
 @keyframes authSwap { from { opacity: 0; transform: translate3d(0, 4px, 0); } to { opacity: 1; transform: none; } }
 
-/* Nút chọn đoạn có "ngón trượt" */
-.segmented.has-thumb { position: relative; gap: 0; padding: 4px; background: #F1F5F9; border-radius: var(--r); }
+.segmented.has-thumb { position: relative; gap: 0; padding: 4px; background: #E8E4DE; border-radius: 999px; }
 .segmented.has-thumb::before {
   content: ''; position: absolute; top: 4px; bottom: 4px; left: 4px;
-  width: calc(50% - 4px); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-sm);
+  width: calc(50% - 4px); border-radius: 999px; background: var(--surface); box-shadow: 0 2px 6px rgba(30,57,50,0.12);
   transform: translateX(calc(var(--seg-i, 0) * 100%));
   transition: transform var(--dur-ui) var(--ease-swap);
 }
@@ -55,12 +48,11 @@
   position: relative; z-index: 1; border: 0; background: transparent; color: var(--muted);
   transition: color var(--dur-ui) var(--ease-swap);
 }
-.segmented.has-thumb .segment[aria-pressed="true"] { background: transparent; color: var(--text); }
+.segmented.has-thumb .segment[aria-pressed="true"] { background: transparent; color: var(--primary-700); }
 
-/* ---------- Phản hồi khi bấm ---------- */
 .btn, .chip, .segment, .tab, .side-link, .item, .card, .stat, .input, .select, .textarea {
-  transition-timing-function: var(--ease-swap);
+  transition-timing-function: ease;
 }
-.btn { transition: background-color var(--dur-ui) linear, border-color var(--dur-ui) linear, color var(--dur-ui) linear, transform 120ms linear, box-shadow var(--dur-ui) linear; }
-.btn:active:not([disabled]) { transform: scale(.98); }
-.tab-pill { transition: background-color var(--dur-ui) linear, transform var(--dur-ui) linear; }
+.btn { transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform 120ms ease, box-shadow .18s ease; }
+.btn:active:not([disabled]) { transform: scale(.97); }
+.tab-pill { transition: background-color .18s ease, transform .18s ease, color .18s ease; }

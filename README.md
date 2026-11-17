@@ -63,4 +63,5 @@ frontend/
 
 - Bộ giao diện chung (`css/style.css`, `css/mobile.css`, `css/desktop.css`, `css/motion.css`, `js/ui.js`, khung `index.html`) được đội chuẩn bị trước giờ thi, không chứa chức năng của đề.
 - Toàn bộ nghiệp vụ theo đề (`js/app.js`, `css/loyalty.css`, `data/seed.js`, `sw.js`) làm trong 60 phút thi, có hỗ trợ của công cụ AI.
-- Thư mục `backend/` là khung gọi AI chuẩn bị trước, **không dùng** trong sản phẩm này.
+- Thư mục `backend/` không tham gia vào sản phẩm chấm thi: app chạy hoàn toàn ở trình duyệt với `localStorage` theo yêu cầu của đề.
+- Giao diện lấy cảm hứng từ mô hình app thành viên quán cà phê; **không dùng logo hay hình ảnh của thương hiệu nào**, mọi hình minh họa do đội tự vẽ.

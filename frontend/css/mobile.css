@@ -1,12 +1,11 @@
 /* =========================================================
-   MOBILE + TABLET (< 1024px) – nạp bằng <link media="(max-width: 1023.98px)">
-   Ưu tiên: 1 tay, ngón cái, chữ dễ đọc, không cuộn ngang.
+   MOBILE + TABLET (< 1024px) – Starbucks-inspired adjustments
    ========================================================= */
 :root {
-  --swap-x: 28px;          /* đổi tab: trượt ngang như app điện thoại */
+  --swap-x: 28px;
   --swap-y: 0px;
-  --topbar-h: 56px;
-  --tabbar-h: 68px;
+  --topbar-h: 60px;
+  --tabbar-h: 70px;
 }
 
 /* ---------- Khung ---------- */
@@ -16,32 +15,34 @@ body { overflow-x: hidden; }
   position: sticky; top: 0; z-index: 20;
   padding-top: env(safe-area-inset-top);
   height: calc(var(--topbar-h) + env(safe-area-inset-top));
-  background: rgba(255, 255, 255, .9);
-  backdrop-filter: saturate(1.6) blur(10px); -webkit-backdrop-filter: saturate(1.6) blur(10px);
+  background: rgba(242, 240, 235, 0.92);
+  backdrop-filter: saturate(1.2) blur(10px); -webkit-backdrop-filter: saturate(1.2) blur(10px);
+  border-bottom: 1px solid rgba(30,57,50,0.08);
 }
-.topbar-title h1 { font-size: 1.0625rem; }
-.topbar-right .badge { display: none; }          /* nhãn "Dữ liệu mẫu" đã có trong trang, bớt chật topbar */
+.topbar-title h1 { font-size: 1.0625rem; color: var(--primary-700); }
+.topbar-right .badge { display: none; }
 @media (min-width: 480px) { .topbar-right .badge { display: inline-flex; } }
 
 .content {
   padding: var(--s-4) var(--s-4) calc(var(--tabbar-h) + var(--s-6) + env(safe-area-inset-bottom));
-  overflow-x: clip;                               /* trang trượt vào không tạo thanh cuộn ngang */
+  overflow-x: clip;
 }
 .page { gap: var(--s-4); }
 
 /* ---------- Thanh tab đáy ---------- */
 .tabbar {
-  background: rgba(255, 255, 255, .94);
-  backdrop-filter: saturate(1.6) blur(12px); -webkit-backdrop-filter: saturate(1.6) blur(12px);
-  box-shadow: 0 -4px 16px rgba(15, 23, 42, .04);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 -6px 20px rgba(30, 57, 50, .06);
+  border-top: 1px solid rgba(30,57,50,0.08);
 }
-.tab { gap: 4px; font-size: 11px; letter-spacing: -.01em; }
+.tab { gap: 4px; font-size: 11px; letter-spacing: -.01em; color: rgba(0,0,0,0.55); }
 .tab-pill { width: 52px; height: 30px; }
-.tab[aria-current="page"] .tab-pill { transform: scale(1.04); }
-.tab:active .tab-pill { transform: scale(.92); }
-/* chỉ báo: vạch nhỏ trên đỉnh tab đang chọn, trượt tuyến tính */
+.tab[aria-current="page"] { color: var(--primary-600); }
+.tab[aria-current="page"] .tab-pill { background: var(--primary-100); color: var(--primary-600); transform: scale(1.02); }
+.tab:active .tab-pill { transform: scale(.94); }
 .tabbar .nav-indicator {
-  top: 0; left: 0; height: 3px; width: calc(100% / var(--n, 5));
+  top: 0; left: 0; height: 3px; width: calc(100% / var(--n, 4));
   transform: translateX(calc(var(--i, 0) * 100%));
   display: flex; justify-content: center;
 }
@@ -49,50 +50,50 @@ body { overflow-x: hidden; }
 
 /* ---------- Tiêu đề trang ---------- */
 .page-head { flex-direction: column; align-items: stretch; gap: var(--s-3); }
-.page-head .h2 { font-size: 1.375rem; }
+.page-head .h2 { font-size: 1.5rem; letter-spacing: -0.01em; }
 .page-head .btn { width: 100%; }
-.eyebrow { font-size: var(--fs-12); text-transform: uppercase; letter-spacing: .04em; }
+.eyebrow { font-size: var(--fs-12); text-transform: uppercase; letter-spacing: .06em; color: var(--primary); }
 
 /* ---------- Thẻ, danh sách ---------- */
-.card { padding: var(--s-4); border-radius: var(--r-lg); }
-.item { min-height: 64px; border-radius: 14px; transition: transform 120ms linear, background-color 120ms linear; }
-.item:active { transform: scale(.985); background: #F8FAFC; }
+.card { padding: var(--s-4); border-radius: 20px; }
+.item { min-height: 64px; border-radius: 16px; transition: transform 120ms ease, background-color 120ms ease; }
+.item:active { transform: scale(.985); background: #FBFAF8; }
 .stat-grid { gap: var(--s-2); }
-.stat { border-radius: 14px; padding: var(--s-3); }
+.stat { border-radius: 16px; padding: 14px; }
 .stat-label { line-height: 1.3; }
 
 /* ---------- Form ---------- */
-.input, .select { min-height: 50px; font-size: 16px; }   /* 16px: iOS không tự zoom */
+.input, .select { min-height: 52px; font-size: 16px; border-radius: 14px; }
 .btn { min-height: 50px; }
 .btn-sm { min-height: var(--tap); }
 .form-actions { position: sticky; bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); z-index: 10;
   margin: 0 calc(-1 * var(--s-4)); padding: var(--s-3) var(--s-4);
-  background: rgba(248, 250, 252, .94); border-top: 1px solid var(--border);
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  background: rgba(242, 240, 235, .95); border-top: 1px solid rgba(30,57,50,0.08);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 
-/* ---------- Hộp thoại: trượt từ đáy lên ---------- */
-.modal { border-radius: 20px 20px 0 0; padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom)); }
+/* ---------- Modal ---------- */
+.modal { border-radius: 24px 24px 0 0; padding-bottom: calc(var(--s-5) + env(safe-area-inset-bottom)); }
 
-/* ---------- ĐĂNG NHẬP (mobile) ---------- */
+/* ---------- Auth ---------- */
 body.auth-page .content { padding: 0; }
 .auth-hero { display: none; }
 .auth-wrap {
   justify-content: flex-start; gap: var(--s-5);
   padding: calc(var(--s-7) + env(safe-area-inset-top)) var(--s-4) calc(var(--s-5) + env(safe-area-inset-bottom));
   background:
-    radial-gradient(520px 300px at 50% -60px, var(--primary-100), transparent 70%),
-    var(--surface);
+    radial-gradient(520px 300px at 50% -60px, #D4E9E2, transparent 70%),
+    #fff;
 }
 .auth-main { width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--s-5); flex: 1; }
 .auth-card { max-width: 440px; padding: 0; border: 0; box-shadow: none; background: transparent; gap: var(--s-5); }
 .auth-brand { gap: var(--s-3); }
-.auth-brand .brand-mark { width: 60px; height: 60px; border-radius: 18px; box-shadow: 0 10px 24px rgba(37, 99, 235, .28); }
+.auth-brand .brand-mark { width: 60px; height: 60px; border-radius: 50%; box-shadow: 0 10px 24px rgba(0, 117, 74, .22); }
 .auth-brand .brand-mark .icon { width: 28px; height: 28px; }
-.auth-brand .h3 { font-size: 1.5rem; }
+.auth-brand .h3 { font-size: 1.5rem; color: var(--primary-700); }
 .auth-foot { margin-top: auto; }
-@media (min-width: 600px) {          /* tablet: đưa form vào thẻ nổi giữa màn */
-  .auth-wrap { justify-content: center; background: radial-gradient(900px 420px at 50% -10%, var(--primary-50), transparent 70%), var(--bg); }
+@media (min-width: 600px) {
+  .auth-wrap { justify-content: center; background: radial-gradient(900px 420px at 50% -10%, #F1F8F6, transparent 70%), var(--bg); }
   .auth-main { flex: 0; }
-  .auth-card { padding: var(--s-6); background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); }
+  .auth-card { padding: var(--s-6); background: var(--surface); border: 1px solid rgba(30,57,50,0.08); border-radius: 24px; box-shadow: var(--shadow); }
   .auth-foot { margin-top: 0; }
 }

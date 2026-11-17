@@ -1,5 +1,5 @@
 /* Thẻ thành viên – màu chủ đạo + thành phần riêng của app */
-:root { --primary:#0F766E; --primary-600:#0D6B63; --primary-700:#115E59; --primary-100:#CCFBF1; --primary-50:#F0FDFA; }
+/* Bảng màu xanh lá + nền kem ấm lấy từ css/style.css */
 .role-switch { width: 190px; }
 .role-switch .segment { min-height: 36px; font-size: 14px; padding: 0 8px; flex: 1; }
 @media (max-width: 380px) { .role-switch { width: 168px; } .topbar-title h1 { font-size: 1rem; } }

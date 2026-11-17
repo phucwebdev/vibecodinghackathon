@@ -1,5 +1,5 @@
 /* Lưu sẵn tệp của app để mở được khi mất mạng. Có mạng thì luôn lấy bản mới nhất. */
-var CACHE = 'the-thanh-vien-v6';
+var CACHE = 'the-thanh-vien-v7';
 var FILES = ['./', 'index.html', 'css/style.css', 'css/loyalty.css', 'css/motion.css', 'css/mobile.css', 'css/desktop.css',
   'js/ui.js', 'js/app.js', 'data/seed.js', 'vendor/qrcode.js', 'vendor/jsQR.js', 'vendor/xlsx.mini.min.js'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(FILES); }).then(function () { return self.skipWaiting(); })); });
