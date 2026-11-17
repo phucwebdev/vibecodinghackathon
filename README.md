@@ -19,6 +19,7 @@ Hệ thống thẻ thành viên số hóa: khách tích điểm khi mua hàng, �
 | Thưởng QR: QR trên thẻ + quét bằng camera ở Quầy (hoặc chọn ảnh QR) | *Thẻ*, *Cộng điểm* → **Quét QR** |
 | Mở rộng: hiệu ứng khi cộng điểm / lên hạng; thống kê mini | *Cộng điểm*, *Thẻ*, *Thành viên* |
 | Mở rộng: quầy xác nhận dùng ưu đãi (quét QR voucher, mỗi mã dùng 1 lần) | *Ưu đãi* (ví) → Quầy → *Dùng ưu đãi* |
+| Mở rộng: xuất Excel (thành viên, lịch sử điểm, ưu đãi đã đổi) | Quầy → *Thành viên* → **Xuất Excel** |
 | Mở rộng: hai cửa sổ Thành viên + Quầy cập nhật tức thì, rung khi quét | Mở app ở 2 cửa sổ cùng trình duyệt |
 
 ## Quy tắc đội công bố
@@ -31,7 +32,7 @@ Hệ thống thẻ thành viên số hóa: khách tích điểm khi mua hàng, �
 
 - HTML + CSS + JavaScript thuần, không cần build. Giao diện riêng cho điện thoại (`css/mobile.css`) và máy tính (`css/desktop.css`).
 - Toàn bộ dữ liệu lưu `localStorage`; thư viện QR đặt sẵn trong `frontend/vendor/` và có service worker nên **chạy được khi mất mạng** sau lần mở đầu.
-- Thư viện: `qrcode-generator` (tạo QR), `html5-qrcode` (quét QR bằng camera – cần HTTPS hoặc localhost).
+- Thư viện: `qrcode-generator` (tạo QR), `html5-qrcode` (quét QR bằng camera – cần HTTPS hoặc localhost), `SheetJS` (xuất Excel).
 
 ## Cách chạy
 

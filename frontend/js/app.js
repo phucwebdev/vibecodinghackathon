@@ -377,10 +377,39 @@
         '<div class="stat"><div class="stat-value">' + num(db.wallet.length) + '</div><div class="stat-label">Ưu đãi đã đổi</div></div>' +
       '</div>' +
       '<div class="field"><label for="m-q" class="sr-only">Tìm thành viên</label><input class="input" id="m-q" type="search" placeholder="Tìm theo tên, mã hoặc số điện thoại" value="' + esc(memberQuery) + '"></div>' +
-      '<p class="small muted">Chạm vào một thành viên để cộng điểm.</p>' +
+      '<div class="row" style="justify-content:space-between;gap:8px;flex-wrap:wrap"><p class="small muted">Chạm vào một thành viên để cộng điểm.</p>' +
+        '<button type="button" class="btn btn-secondary btn-sm" data-action="export">' + icon('download', 16) + 'Xuất Excel</button></div>' +
       '<div id="members-list">' + membersListHtml() + '</div>' +
       (recent.length ? '<div class="section-head"><h2 class="h4">Giao dịch gần đây</h2></div><div class="list">' + recent.map(function (t) { return txRow(t, true); }).join('') + '</div>' : '') +
     '</div>';
+  }
+
+  /* Xuất toàn bộ dữ liệu ra tệp Excel (3 trang tính) để chủ quán quản lý */
+  function exportExcel() {
+    if (!window.XLSX) { UI.toast('Chưa tải được công cụ xuất Excel. Vui lòng tải lại trang.', 'error'); return; }
+    if (!db.members.length) { UI.toast('Chưa có dữ liệu để xuất. Hãy nạp dữ liệu mẫu trước.', 'error'); return; }
+    var X = window.XLSX, wb = X.utils.book_new();
+    function sheet(name, rows, widths) {
+      var ws = rows.length ? X.utils.json_to_sheet(rows) : X.utils.aoa_to_sheet([['Chưa có dữ liệu']]);
+      ws['!cols'] = widths.map(function (w) { return { wch: w }; });
+      X.utils.book_append_sheet(wb, ws, name);
+    }
+    sheet('ThanhVien', db.members.slice().sort(function (a, b) { return b.points - a.points; }).map(function (m) {
+      return { 'Mã thành viên': m.id, 'Họ tên': m.name, 'Số điện thoại': m.phone, 'Điểm hiện có': m.points, 'Hạng': tierOf(m.points).name, 'Ngày tham gia': fmtTime(m.joined).slice(0, 10) };
+    }), [16, 24, 16, 14, 10, 14]);
+    sheet('LichSuDiem', db.txs.slice().sort(function (a, b) { return a.time < b.time ? 1 : -1; }).map(function (t) {
+      var m = findMember(t.memberId);
+      return { 'Mã giao dịch': t.id, 'Loại': t.type === 'earn' ? 'Cộng điểm' : 'Đổi điểm', 'Mã thành viên': t.memberId, 'Họ tên': m ? m.name : '', 'Thời gian': fmtTime(t.time), 'Giá trị giao dịch (đ)': t.amount || 0, 'Thay đổi điểm': t.points, 'Số dư sau': t.balance, 'Ghi chú': t.note || '' };
+    }), [18, 12, 16, 24, 18, 20, 14, 12, 22]);
+    sheet('UuDaiDaDoi', db.wallet.map(function (w) {
+      var m = findMember(w.memberId);
+      return { 'Mã ưu đãi': w.id, 'Tên ưu đãi': w.name, 'Mã thành viên': w.memberId, 'Họ tên': m ? m.name : '', 'Đổi lúc': fmtTime(w.time), 'Trạng thái': w.used ? 'Đã dùng' : 'Chưa dùng', 'Dùng lúc': w.used ? fmtTime(w.used) : '' };
+    }), [14, 22, 16, 24, 18, 12, 18]);
+    var d = new Date();
+    function p2(n) { return ('0' + n).slice(-2); }
+    var file = 'the-thanh-vien-' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes()) + '.xlsx';
+    try { X.writeFile(wb, file); UI.toast('Đã xuất tệp ' + file, 'success'); }
+    catch (e) { UI.toast('Không xuất được tệp. Vui lòng thử lại.', 'error'); }
   }
 
   /* ---------- TRANG: Thể lệ ---------- */
@@ -572,7 +601,8 @@
           UI.toast('Đã đổi ' + r.reward.name + '. Ưu đãi nằm trong ví của bạn.', 'success');
           router.refresh();
         });
-    } else if (a === 'scan') { startScan(); }
+    } else if (a === 'export') { exportExcel(); }
+    else if (a === 'scan') { startScan(); }
     else if (a === 'scan-stop') { stopScan(); }
     else if (a === 'pick') { prefill = b.getAttribute('data-id'); lastResult = null; router.go('quay'); }
   });
