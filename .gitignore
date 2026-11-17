@@ -4,6 +4,11 @@
 !.env.example
 
 node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+backend/data/
 .vercel/
 .DS_Store
 Thumbs.db

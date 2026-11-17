@@ -1,81 +1,53 @@
-# Backend – AI có fallback
+# Backend FastAPI – Hệ thống Thẻ Thành Viên 2 Đầu (Doanh Nghiệp & Ngân Hàng)
 
-Gọi AI theo thứ tự **Claude → DeepSeek → Gemini**. Provider đầu lỗi thì tự chuyển sang provider sau, người dùng không thấy lỗi.
-Viết bằng Node thuần (>= 18), **không cần `npm install`**.
+Backend viết bằng **Python FastAPI**, tích hợp:
+1. **AI Fallback 4 tầng:** `Gemini (Key 1)` ➔ `OpenRouter (GPT-4.1 mini → Claude Haiku 5.5 → DeepSeek V4.1 Flash)` ➔ `Gemini (Key 2 dự phòng)` ➔ `Local Rule Engine (Offline)`.
+2. **Lưu trữ trực tiếp Firebase Firestore (`vibecoding-c4196`):**
+   - Khi **Có mạng**: Đẩy thẳng mọi giao dịch (Đăng ký, Cộng điểm, Chống trùng mã GD, Đổi ưu đãi, Nạp mẫu BTC) lên **Firebase Firestore**.
+   - Khi **Mất mạng**: Backend tự động phát hiện mất kết nối tới Firebase và trả cờ `activateLocalStorage: true` để Frontend kích hoạt môi trường `localStorage` tạm thời.
+3. **Nghiệp vụ Ngân hàng (Đối soát Offline & Tự động Rollback / Hoàn điểm):**
+   - Khi có mạng trở lại, `/api/loyalty/sync` nhận hàng đợi từ `localStorage` đẩy lên Firebase.
+   - Nếu hợp lệ: Hạch toán `COMMITTED` lên Firebase.
+   - Nếu xung đột (trùng mã giao dịch đã có trên Cloud hoặc không đủ số dư điểm thực tế): Tự động sinh **Bút toán Đảo (`ROLLED_BACK`)**, hoàn trả điểm và hủy voucher lỗi.
 
-## Chạy ở máy
+---
+
+## 1. Chạy ở máy Local
 
 ```bash
 cd backend
-node server.js        # hoặc: npm start
+pip install -r requirements.txt
+python main.py
+# Hoặc: uvicorn main:app --host 0.0.0.0 --port 3001 --reload
 ```
-Mở http://localhost:3001/api/health để xem trạng thái từng provider.
+- Kiểm tra trạng thái AI & Firebase: `http://localhost:3001/api/health`
+- Tài liệu Swagger UI tự động: `http://localhost:3001/docs`
+- Chạy bộ kiểm thử tự động: `python test_backend.py`
 
-Kiểm tra key còn sống: `npm run check` · Test logic fallback (không tốn tiền API): `npm test`
+---
 
-## API
+## 2. Deploy lên Render (Root Directory: `backend`)
 
-### `POST /api/ai/chat`
-```json
-{
-  "prompt": "Câu hỏi...",                       // hoặc "messages": [{ "role": "user", "content": "..." }]
-  "system": "Vai trò của AI (không bắt buộc)",
-  "json": false,                                // true → AI trả JSON, kết quả nằm ở "data"
-  "maxTokens": 1024,
-  "temperature": 0.7,
-  "providers": ["gemini", "claude"]             // đổi thứ tự cho riêng request này (không bắt buộc)
-}
-```
-Thành công (200):
-```json
-{ "ok": true, "text": "...", "data": {}, "provider": "deepseek", "model": "deepseek-chat", "ms": 1840,
-  "attempts": [{ "provider": "claude", "ok": false, "kind": "timeout" }, { "provider": "deepseek", "ok": true }] }
-```
-Tất cả đều lỗi (503): `{ "ok": false, "error": "câu thông báo tiếng Việt", "attempts": [...] }`
+### Cách 1: Tạo Web Service thủ công trên Render
+1. Vào **Render Dashboard → New → Web Service** → Chọn repo `phucwebdev/vibecodinghackathon`.
+2. Cấu hình:
+   - **Root Directory:** `backend`
+   - **Runtime:** `Python 3`
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+3. Trong mục **Environment Variables**, thêm:
+   - `GEMINI_API_KEY`
+   - `OPENROUTER_API_KEY`
+   - `GEMINI_API_KEY_2`
+   - `CORS_ORIGIN` = `*` (hoặc domain frontend Vercel)
 
-### `GET /api/health`
-Trạng thái từng provider: đã có key chưa, đang tạm khoá bao lâu, lỗi gần nhất. Không bao giờ trả về key.
+### Cách 2: Dùng Blueprint (`render.yaml`)
+- Đã cấu hình sẵn `rootDir: backend` trong `render.yaml` ở thư mục gốc và `backend/render.yaml`.
 
-## Cơ chế fallback
+---
 
-| Tình huống | Xử lý |
-|---|---|
-| Chưa có key | Bỏ qua provider đó |
-| Sai key / hết tiền (401, 402, 403) | Chuyển provider sau, tạm khoá 10 phút |
-| Quá giới hạn (429) | Chuyển provider sau, tạm khoá theo `retry-after` (mặc định 30 giây) |
-| Lỗi server / mạng / quá 20 giây | Chuyển provider sau, tạm khoá 20 giây |
-| Yêu cầu JSON nhưng AI trả JSON hỏng | Chuyển provider sau |
-| Cả 3 đều lỗi | Trả 503 + câu thông báo tiếng Việt cho người dùng |
+## 3. Deploy lên Vercel (Root Directory: `backend`)
 
-Tổng thời gian tối đa cho một yêu cầu: `AI_TOTAL_BUDGET_MS` (45 giây).
-
-## Deploy lên Vercel
-
-1. Vercel → **Add New Project** → chọn repo này → **Root Directory: `backend`**, Framework Preset: **Other**, không có build command.
-2. **Settings → Environment Variables**: thêm từng dòng trong `.env` (`CLAUDE_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `CLAUDE_WORKSPACE_ID`, …).
-3. Deploy → copy URL (VD `https://aifus-api.vercel.app`) → dán vào `PROD_API` trong `frontend/js/ai.js`.
-4. Sau khi có domain frontend, đặt `CORS_ORIGIN=https://<frontend>.vercel.app` để chặn web khác dùng ké key.
-
-## Thêm logic theo đề
-
-- Viết hàm xử lý trong `lib/handlers.js` (hoặc `lib/routes/*.js`), gọi `generate({ prompt, system, json: true })` từ `lib/fallback.js`.
-- Thêm vào bảng `routes` (để chạy local) và tạo file `api/<ten>.js` export handler đó (để chạy trên Vercel).
-
-## Cấu trúc
-
-```
-backend/
-├── api/                 # Vercel Functions (mỗi file = 1 endpoint)
-│   ├── ai/chat.js
-│   └── health.js
-├── lib/
-│   ├── fallback.js      # lõi fallback + tạm khoá provider
-│   ├── handlers.js      # xử lý request, dùng chung local & Vercel
-│   ├── http.js          # CORS, đọc body, trả JSON
-│   ├── env.js           # đọc .env
-│   └── providers/       # claude.js · deepseek.js · gemini.js
-├── test/
-├── server.js            # server chạy ở máy
-├── .env                 # KEY BÍ MẬT – không commit
-└── .env.example
-```
+1. Vercel → **Add New Project** → Chọn repo → đặt **Root Directory: `backend`**.
+2. File `backend/vercel.json` đã cấu hình sẵn `@vercel/python` trỏ vào `main.py`.
+3. Thêm biến môi trường `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `GEMINI_API_KEY_2` trong **Settings → Environment Variables**.

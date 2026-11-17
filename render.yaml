@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: vibe-loyalty-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: AI_ORDER
+        value: "gemini,openrouter,gemini2"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY_2
+        sync: false
+      - key: CORS_ORIGIN
+        value: "*"
