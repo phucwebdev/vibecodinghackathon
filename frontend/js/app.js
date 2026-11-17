@@ -268,8 +268,20 @@
     var m = findMember(code);
     if (!normCode(code)) return '';
     if (!m) return '<p class="small muted">Chưa tìm thấy thành viên có mã này.</p>';
-    return '<div class="member-mini"><div><div class="item-title">' + esc(m.name) + '</div><div class="small muted">' + esc(m.id) + ' · ' + esc(m.phone) + '</div></div>' +
-      '<div style="text-align:right"><div class="h4">' + num(m.points) + ' điểm</div><span class="badge badge-neutral">Hạng ' + tierOf(m.points).name + '</span></div></div>';
+    var t = tierOf(m.points), n = nextTier(m.points);
+    var last = db.txs.filter(function (x) { return x.memberId === m.id; }).sort(function (a, b) { return a.time < b.time ? 1 : -1; }).slice(0, 3);
+    var vouchers = db.wallet.filter(function (w) { return w.memberId === m.id && !w.used; }).length;
+    return '<div class="profile" role="status" aria-label="Hồ sơ thành viên">' +
+      '<div class="profile-head tier-' + t.key + '"><div class="mcard-pattern" aria-hidden="true"></div>' +
+        '<div class="profile-id"><div class="profile-name">' + esc(m.name) + '</div><div class="small">' + esc(m.id) + ' · ' + esc(m.phone) + '</div></div>' +
+        '<span class="tier-badge">' + icon('star', 14) + 'Hạng ' + t.name + '</span></div>' +
+      '<div class="profile-stats"><div><strong>' + num(m.points) + '</strong><span>Điểm hiện có</span></div>' +
+        '<div><strong>' + (n ? num(n.min - m.points) : '—') + '</strong><span>' + (n ? 'Điểm tới hạng ' + n.name : 'Hạng cao nhất') + '</span></div>' +
+        '<div><strong>' + vouchers + '</strong><span>Ưu đãi chưa dùng</span></div></div>' +
+      (last.length ? '<div class="profile-last"><div class="small muted">Biến động gần đây</div>' + last.map(function (x) {
+        return '<div class="row" style="justify-content:space-between;gap:8px"><span class="small">' + (x.type === 'earn' ? 'Cộng điểm' : 'Đổi điểm') + ' · ' + fmtTime(x.time) + '</span><span class="' + (x.points > 0 ? 'pts-plus' : 'pts-minus') + '">' + (x.points > 0 ? '+' : '−') + num(Math.abs(x.points)) + '</span></div>';
+      }).join('') + '</div>' : '<p class="small muted profile-last">Thành viên chưa có giao dịch nào.</p>') +
+    '</div>';
   }
   function resultHtml(r) {
     var t = tierOf(r.member.points);
@@ -332,7 +344,7 @@
   }
   function stopScan() {
     var s = scanner; scanner = null;
-    if (s) { try { s.stop().then(function () { s.clear(); }).catch(function () {}); } catch (e) { /* bỏ qua */ } }
+    if (s) { try { s.stop().then(function () { try { s.clear(); } catch (e) { /* bỏ qua */ } }).catch(function () {}); } catch (e) { /* bỏ qua */ } }
     var box = document.getElementById('scan-box'); if (box) box.hidden = true;
   }
   function onScanned(text) {
@@ -347,7 +359,8 @@
     var input = document.getElementById('e-member');
     if (input) { input.value = code; document.getElementById('member-mini').innerHTML = memberMini(code); }
     var m = findMember(code);
-    UI.toast(m ? 'Đã đọc mã ' + code + ' – ' + m.name : 'Đã đọc mã ' + code + ' nhưng chưa có thành viên này', m ? 'success' : 'error');
+    UI.toast(m ? 'Đã đọc mã ' + code + ' – ' + m.name : 'Đã đọc mã ' + code + ' nhưng chưa có thành viên này. Hãy nạp dữ liệu mẫu ở trang Thể lệ.', m ? 'success' : 'error');
+    var prof = document.getElementById('member-mini'); if (prof && prof.scrollIntoView) prof.scrollIntoView({ block: 'center', behavior: 'smooth' });
     var amount = document.getElementById('e-amount'); if (m && amount) amount.focus();
   }
   function startScan() {
@@ -356,12 +369,38 @@
     box.hidden = false;
     if (!window.Html5Qrcode) { UI.toast('Không mở được máy quét. Hãy nhập mã thành viên bằng tay.', 'error'); return; }
     if (scanner) return;
-    scanner = new window.Html5Qrcode('qr-reader');
-    scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 220, height: 220 } }, onScanned, function () {})
-      .catch(function () {
-        scanner = null;
-        UI.toast('Không dùng được camera. Hãy cấp quyền camera, chọn ảnh QR hoặc nhập mã bằng tay.', 'error');
+    if (!window.isSecureContext || !navigator.mediaDevices) {
+      UI.toast('Camera chỉ chạy trên địa chỉ https. Hãy mở link demo, hoặc bấm "Chọn ảnh QR".', 'error'); return;
+    }
+    var cfg = { fps: 10, qrbox: function (w, h) { var s = Math.max(120, Math.floor(Math.min(w, h) * 0.75)); return { width: s, height: s }; } };
+    var handled = false;
+    function ok(text) { if (handled) return; handled = true; onScanned(text); }
+    function fail(err) {
+      scanner = null;
+      var name = (err && err.name) || String(err || '');
+      var msg = /NotAllowed|Permission/i.test(name) ? 'Bạn chưa cho phép dùng camera. Hãy bấm biểu tượng ổ khóa trên thanh địa chỉ để cấp quyền, hoặc bấm "Chọn ảnh QR".'
+        : /NotFound|Overconstrained|DevicesNotFound/i.test(name) ? 'Máy này không có camera phù hợp. Hãy bấm "Chọn ảnh QR" hoặc nhập mã bằng tay.'
+        : /NotReadable|TrackStart/i.test(name) ? 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.'
+        : 'Không mở được camera. Hãy bấm "Chọn ảnh QR" hoặc nhập mã bằng tay.';
+      UI.toast(msg, 'error');
+    }
+    function open(source, next) {
+      try { document.getElementById('qr-reader').innerHTML = ''; } catch (e) { /* bỏ qua */ }
+      scanner = new window.Html5Qrcode('qr-reader');
+      return scanner.start(source, cfg, ok, function () {}).catch(function (err) {
+        try { scanner.clear(); } catch (e) { /* bỏ qua */ }
+        if (next) return next(err);
+        fail(err);
       });
+    }
+    /* Thử camera sau → nếu không được thì dùng camera bất kỳ của máy (VD: webcam laptop) */
+    open({ facingMode: 'environment' }, function (firstErr) {
+      if (/NotAllowed|Permission/i.test((firstErr && firstErr.name) || String(firstErr))) return fail(firstErr);
+      return window.Html5Qrcode.getCameras().then(function (cams) {
+        if (!cams || !cams.length) return fail({ name: 'NotFoundError' });
+        return open(cams[cams.length - 1].id, null);
+      }).catch(fail);
+    });
   }
   function scanFile(file) {
     if (!file || !window.Html5Qrcode) return;
