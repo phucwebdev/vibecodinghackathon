@@ -342,9 +342,15 @@
         '<button class="btn btn-primary btn-block" type="submit">' + icon('check-circle') + 'Xác nhận đã dùng</button>' +
       '</form></div>';
   }
+  /* Máy quét QR tự viết: camera → khung hình → giải mã bằng BarcodeDetector (nếu máy có) và jsQR.
+     Quét cả khung hình, không cần canh đúng ô. */
   function stopScan() {
     var s = scanner; scanner = null;
-    if (s) { try { s.stop().then(function () { try { s.clear(); } catch (e) { /* bỏ qua */ } }).catch(function () {}); } catch (e) { /* bỏ qua */ } }
+    if (s) {
+      s.stopped = true;
+      try { s.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* bỏ qua */ }
+    }
+    var r = document.getElementById('qr-reader'); if (r) r.innerHTML = '';
     var box = document.getElementById('scan-box'); if (box) box.hidden = true;
   }
   function onScanned(text) {
@@ -363,54 +369,87 @@
     var prof = document.getElementById('member-mini'); if (prof && prof.scrollIntoView) prof.scrollIntoView({ block: 'center', behavior: 'smooth' });
     var amount = document.getElementById('e-amount'); if (m && amount) amount.focus();
   }
+  function decodeCanvas(canvas) {
+    try {
+      var ctx = canvas.getContext('2d', { willReadFrequently: true });
+      var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      var res = window.jsQR ? window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' }) : null;
+      return res && res.data ? res.data : '';
+    } catch (e) { return ''; }
+  }
+  function camError(err) {
+    var name = (err && err.name) || String(err || '');
+    return /NotAllowed|Permission|Security/i.test(name) ? 'Bạn chưa cho phép dùng camera. Bấm biểu tượng ổ khóa trên thanh địa chỉ để cấp quyền, hoặc bấm "Chọn ảnh QR".'
+      : /NotFound|Overconstrained|DevicesNotFound/i.test(name) ? 'Máy này không có camera phù hợp. Hãy bấm "Chọn ảnh QR" hoặc nhập mã bằng tay.'
+      : /NotReadable|TrackStart|Abort/i.test(name) ? 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.'
+      : 'Không mở được camera. Hãy bấm "Chọn ảnh QR" hoặc nhập mã bằng tay.';
+  }
   function startScan() {
-    var box = document.getElementById('scan-box');
-    if (!box) return;
+    var box = document.getElementById('scan-box'), holder = document.getElementById('qr-reader');
+    if (!box || !holder) return;
     box.hidden = false;
-    if (!window.Html5Qrcode) { UI.toast('Không mở được máy quét. Hãy nhập mã thành viên bằng tay.', 'error'); return; }
     if (scanner) return;
-    if (!window.isSecureContext || !navigator.mediaDevices) {
-      UI.toast('Camera chỉ chạy trên địa chỉ https. Hãy mở link demo, hoặc bấm "Chọn ảnh QR".', 'error'); return;
+    if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      UI.toast('Camera chỉ chạy trên địa chỉ https và trong Chrome hoặc Safari. Hãy mở link demo, hoặc bấm "Chọn ảnh QR".', 'error'); return;
     }
-    var cfg = { fps: 10, qrbox: function (w, h) { var s = Math.max(120, Math.floor(Math.min(w, h) * 0.75)); return { width: s, height: s }; } };
-    var handled = false;
-    function ok(text) { if (handled) return; handled = true; onScanned(text); }
-    function fail(err) {
-      scanner = null;
-      var name = (err && err.name) || String(err || '');
-      var msg = /NotAllowed|Permission/i.test(name) ? 'Bạn chưa cho phép dùng camera. Hãy bấm biểu tượng ổ khóa trên thanh địa chỉ để cấp quyền, hoặc bấm "Chọn ảnh QR".'
-        : /NotFound|Overconstrained|DevicesNotFound/i.test(name) ? 'Máy này không có camera phù hợp. Hãy bấm "Chọn ảnh QR" hoặc nhập mã bằng tay.'
-        : /NotReadable|TrackStart/i.test(name) ? 'Camera đang được ứng dụng khác sử dụng. Hãy đóng ứng dụng đó rồi thử lại.'
-        : 'Không mở được camera. Hãy bấm "Chọn ảnh QR" hoặc nhập mã bằng tay.';
-      UI.toast(msg, 'error');
-    }
-    function open(source, next) {
-      try { document.getElementById('qr-reader').innerHTML = ''; } catch (e) { /* bỏ qua */ }
-      scanner = new window.Html5Qrcode('qr-reader');
-      return scanner.start(source, cfg, ok, function () {}).catch(function (err) {
-        try { scanner.clear(); } catch (e) { /* bỏ qua */ }
-        if (next) return next(err);
-        fail(err);
+    holder.innerHTML = '<video playsinline muted autoplay></video><div class="scan-frame" aria-hidden="true"></div><p class="scan-hint">Đang mở camera…</p>';
+    var video = holder.querySelector('video'), hint = holder.querySelector('.scan-hint');
+    var me = { stopped: false, stream: null };
+    scanner = me;
+    function getCam(c) { return navigator.mediaDevices.getUserMedia({ video: c, audio: false }); }
+    getCam({ facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } })
+      .catch(function (e) { if (/NotAllowed|Permission|Security/i.test(e && e.name)) throw e; return getCam(true); })
+      .then(function (stream) {
+        if (me.stopped) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+        me.stream = stream; video.srcObject = stream;
+        var p = video.play(); if (p && p.catch) p.catch(function () {});
+        hint.textContent = 'Đưa mã QR vào trong khung hình';
+        var canvas = document.createElement('canvas');
+        var detector = null;
+        try { if ('BarcodeDetector' in window) detector = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { detector = null; }
+        var busy = false, last = 0;
+        function done(text) { if (me.stopped || !text) return; me.stopped = true; onScanned(text); }
+        function tick(ts) {
+          if (me.stopped) return;
+          requestAnimationFrame(tick);
+          if (busy || ts - last < 120 || video.readyState < 2 || !video.videoWidth) return;
+          last = ts; busy = true;
+          var scale = Math.min(1, 900 / Math.max(video.videoWidth, video.videoHeight));
+          canvas.width = Math.round(video.videoWidth * scale); canvas.height = Math.round(video.videoHeight * scale);
+          canvas.getContext('2d', { willReadFrequently: true }).drawImage(video, 0, 0, canvas.width, canvas.height);
+          var text = decodeCanvas(canvas);
+          if (text) { busy = false; return done(text); }
+          if (detector) {
+            detector.detect(canvas).then(function (codes) { busy = false; if (codes && codes[0] && codes[0].rawValue) done(codes[0].rawValue); })
+              .catch(function () { busy = false; detector = null; });
+          } else busy = false;
+        }
+        requestAnimationFrame(tick);
+      })
+      .catch(function (err) {
+        if (scanner === me) scanner = null;
+        holder.innerHTML = '';
+        UI.toast(camError(err), 'error');
       });
-    }
-    /* Thử camera sau → nếu không được thì dùng camera bất kỳ của máy (VD: webcam laptop) */
-    open({ facingMode: 'environment' }, function (firstErr) {
-      if (/NotAllowed|Permission/i.test((firstErr && firstErr.name) || String(firstErr))) return fail(firstErr);
-      return window.Html5Qrcode.getCameras().then(function (cams) {
-        if (!cams || !cams.length) return fail({ name: 'NotFoundError' });
-        return open(cams[cams.length - 1].id, null);
-      }).catch(fail);
-    });
   }
   function scanFile(file) {
-    if (!file || !window.Html5Qrcode) return;
-    var live = scanner; scanner = null;
-    var run = function () {
-      var s = new window.Html5Qrcode('qr-reader');
-      s.scanFile(file, false).then(function (text) { s.clear(); onScanned(text); })
-        .catch(function () { UI.toast('Không đọc được mã QR trong ảnh. Hãy thử ảnh rõ hơn.', 'error'); });
+    if (!file) return;
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      var text = '', sizes = [1000, 600, 1600];
+      for (var i = 0; i < sizes.length && !text; i++) {
+        var scale = Math.min(1, sizes[i] / Math.max(img.width, img.height));
+        var c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * scale)); c.height = Math.max(1, Math.round(img.height * scale));
+        var ctx = c.getContext('2d', { willReadFrequently: true });
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
+        text = decodeCanvas(c);
+      }
+      URL.revokeObjectURL(url);
+      if (text) onScanned(text); else UI.toast('Không đọc được mã QR trong ảnh. Hãy thử ảnh rõ hơn.', 'error');
     };
-    if (live) live.stop().then(function () { live.clear(); run(); }).catch(run); else run();
+    img.onerror = function () { URL.revokeObjectURL(url); UI.toast('Không mở được ảnh này.', 'error'); };
+    img.src = url;
   }
 
   /* ---------- TRANG: Quầy – thành viên & thống kê ---------- */

@@ -34,7 +34,7 @@ Hệ thống thẻ thành viên số hóa: khách tích điểm khi mua hàng, �
 
 - HTML + CSS + JavaScript thuần, không cần build. Giao diện riêng cho điện thoại (`css/mobile.css`) và máy tính (`css/desktop.css`).
 - Toàn bộ dữ liệu lưu `localStorage`; thư viện QR đặt sẵn trong `frontend/vendor/` và có service worker nên **chạy được khi mất mạng** sau lần mở đầu.
-- Thư viện: `qrcode-generator` (tạo QR), `html5-qrcode` (quét QR bằng camera – cần HTTPS hoặc localhost), `SheetJS` (xuất Excel).
+- Thư viện: `qrcode-generator` (tạo QR), `jsQR` + BarcodeDetector của trình duyệt (quét QR bằng camera – cần HTTPS hoặc localhost), `SheetJS` (xuất Excel).
 
 ## Cách chạy
 
